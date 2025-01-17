@@ -10,7 +10,7 @@
 Develop Unit Test
 1. Collect Data [x]
 2. Analyse Data [ ]
-3. Process Data [ ]
+3. Process & Prepare Data [ ]
 4. Implement Time Series Model [ ]
 5. Test and Fine-tune model [ ]
 6. Calculate Optimal Inventory Policies EOQ and NewsVendor [ ]
