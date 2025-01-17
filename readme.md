@@ -9,7 +9,7 @@
 ## Steps:
 Develop Unit Test
 1. Collect Data [x]
-2. Analyse Data [ ]
+2. Analyse Data [x]
 3. Process & Prepare Data [ ]
 4. Implement Time Series Model [ ]
 5. Test and Fine-tune model [ ]
