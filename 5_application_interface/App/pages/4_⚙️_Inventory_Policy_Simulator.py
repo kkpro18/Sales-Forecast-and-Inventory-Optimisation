@@ -2,11 +2,14 @@ import streamlit as st
 import pandas as pd
 from matplotlib import pyplot as plt
 import plotly.graph_objects as go
+from matplotlib.pyplot import xlabel
 
-from methods import *
-# to run application type this into the terminal "streamlit run 5_application_interface/scripts/App.py"
+# to run application type this into the terminal "streamlit run 5_application_interface/App/1_📁_Upload_Dataset.py"
+st.set_page_config(
+    page_title="Sales Forecasting and Inventory Optimisation Service",
+    page_icon="📈",
+)
 
-st.title("Sales Forecasting and Inventory Optimisation Service")
 # upload dataset
 uploaded_dataset = st.file_uploader("Upload your sales data", type="csv")
 if uploaded_dataset is not None:
@@ -21,17 +24,18 @@ if uploaded_dataset is not None:
     if visualise_button:
         figure = go.Figure()
         figure.add_trace(go.Scatter(x=df[date_column],y=df[sales_column]))
-        
+        figure.update_layout(
+                    title_text=f"Sales Forecasting",
+                    xaxis=dict(rangeslider=dict(visible=True), type="date"),
+                    xaxis_title=date_column,
+                    yaxis_title=sales_column,
+                )
+        st.plotly_chart(figure)
 
-        # figure = plt.figure()
-        # plt.plot(df[date_column].head(60000), df[sales_column].head(60000))
-        # plt.title('Sales Data')
-        # plt.xlabel('Date')
-        # plt.ylabel('Units Sold')
-        # st.pyplot(figure,use_container_width=True)
+    st.multiselect("Select features that can be used to predict sales", df.columns.drop(date_column).drop(sales_column))
 
-    st.multiselect("Select additional features that may enhance sales prediction accuracy", df.columns.drop(date_column).drop(sales_column))
     start_button = st.button("Begin Forecasting Sales")
+
     if start_button:
         # check if data is stationary, otherwise apply differencing until stationary - number of differencing steps is noted as d value
 
