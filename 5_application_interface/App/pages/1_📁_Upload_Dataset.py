@@ -8,9 +8,8 @@ st.set_page_config(
 )
 
 st.markdown("# Upload Dataset")
-st.sidebar.header("1. Upload Dataset")
-
 st.write("""Here you can upload your dataset in CSV format. You can click to upload or drag a CSV file over to this page.""")
+
 uploaded_dataset = st.file_uploader("Upload your sales data", type="csv")
 
 if uploaded_dataset is not None:
@@ -20,9 +19,13 @@ if uploaded_dataset is not None:
 
 if 'uploaded_dataset' in st.session_state:
     st.write(st.session_state['uploaded_dataset'].head())
+
     st.write("Select Columns to Use For the Forecast")
+
     date_column = st.selectbox("Select the Column for Dates", st.session_state['uploaded_dataset'].columns)
     st.session_state["date_column"] = date_column
+
     sales_column = st.selectbox("Select the Column for Sales", st.session_state['uploaded_dataset'].columns.drop(date_column))
     st.session_state["sales_column"] = sales_column
+
     st.write("👈 Next Stage: Visualise The Dataset")

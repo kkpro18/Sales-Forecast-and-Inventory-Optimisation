@@ -4,12 +4,12 @@ import streamlit as st
 
 # to run application type this into the terminal "streamlit run 5_application_interface/App/0_Home.py"
 st.set_page_config(
-    page_title="Upload Dataset",
-    page_icon="📁",
+    page_title="Explore Data",
+    page_icon="🔎",
 )
-st.markdown("# Upload Dataset")
+st.markdown("# Explore and Clean Your Sales Dataset")
 st.write(
-    """Here you can upload your dataset in CSV format. You can click to upload or drag a CSV file over to this page.""")
+    """Here you can view your dataset and also pre-process it prior to the Sales Forecasting.""")
 
 
 if 'uploaded_dataset' in st.session_state:
@@ -28,3 +28,7 @@ if 'uploaded_dataset' in st.session_state:
                     yaxis_title=sales_column,
                 )
         st.plotly_chart(figure)
+
+        st.write("👈 Next Stage: Forecast Sales")
+else:
+    st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")

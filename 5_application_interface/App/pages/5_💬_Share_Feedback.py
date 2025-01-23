@@ -6,9 +6,20 @@ from matplotlib.pyplot import xlabel
 
 # to run application type this into the terminal "streamlit run 5_application_interface/App/1_📁_Upload_Dataset.py"
 st.set_page_config(
-    page_title="Sales Forecasting and Inventory Optimisation Service",
-    page_icon="📈",
+    page_title="Share Feedback",
+    page_icon="💬",
 )
+st.markdown("# Provide Feedback")
+st.write("""Share Your Feedback""")
 
-if 'uploaded_dataset' in st.session_state:
-    uploaded_dataset = st.session_state["uploaded_dataset"]
+feedback = st.feedback(options="stars")
+feedback_text = st.text_area("Enter feedback here")
+
+if len(feedback_text) > 0:
+    st.write(f"You wrote {len(feedback_text)} characters.")
+
+submit_button = st.button("Submit Feedback")
+
+if submit_button:
+    st.success("Feedback submitted")
+
