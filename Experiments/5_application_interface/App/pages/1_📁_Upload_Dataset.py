@@ -22,10 +22,17 @@ if 'uploaded_dataset' in st.session_state:
 
     st.write("Select Columns to Use For the Forecast")
 
-    date_column = st.selectbox("Select the Column for Dates", st.session_state['uploaded_dataset'].columns)
-    st.session_state["date_column"] = date_column
+    columns = st.session_state['uploaded_dataset'].copy().columns.tolist()
+    columns.insert(len(columns), "None")
 
-    sales_column = st.selectbox("Select the Column for Sales", st.session_state['uploaded_dataset'].columns.drop(date_column))
+    date_column = st.selectbox("Select the Column for Dates", columns)
+    st.session_state["date_column"] = date_column
+    product_details_column = st.selectbox("Select the Column for Product Name / Category / Details", columns)
+    st.session_state["product_details_column"] = product_details_column
+
+    sales_column = st.selectbox("Select the Column for Quantity Sold", st.session_state['uploaded_dataset'].columns.drop(date_column))
     st.session_state["sales_column"] = sales_column
+
+
 
     st.write("👈 Next Stage: Visualise The Dataset")

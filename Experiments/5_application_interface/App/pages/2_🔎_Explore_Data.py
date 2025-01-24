@@ -1,4 +1,3 @@
-import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
 
@@ -14,7 +13,7 @@ st.write(
 
 if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
-    date_column = st.session_state["date_column"]
+    date_column = st.session_state["date_column"] # ensure its in correct form
     sales_column = st.session_state["sales_column"]
     # visualise data
     visualise_button = st.button("Visualise Current Sales")
