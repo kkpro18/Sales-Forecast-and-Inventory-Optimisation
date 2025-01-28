@@ -1,7 +1,7 @@
 import streamlit as st
+import statsmodels
 from statsmodels.tsa.stattools import adfuller
 from sktime.forecasting.arima import AutoARIMA
-import matplotlib.pyplot as plt
 import pandas as pd
 import warnings
 
@@ -9,6 +9,7 @@ import warnings
 st.set_page_config(
     page_title="Forecast Sales",
     page_icon="📈",
+    layout="wide",
 )
 st.markdown("# Forecast Sales")
 st.write("""Let's Begin Forecasting Sales!""")
@@ -16,7 +17,7 @@ st.write("""Let's Begin Forecasting Sales!""")
 if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
     date_column = st.session_state["date_column"]
-    sales_column = st.session_state["sales_column"]
+    sales_column = st.session_state["units_sold_column"]
     st.multiselect("Select features that can be used to predict sales", uploaded_dataset.columns.drop(date_column).drop(sales_column))
 
     start_button = st.button("Begin Forecasting Sales")
@@ -62,6 +63,6 @@ if 'uploaded_dataset' in st.session_state:
 
         # calculate performance metrics
         pass
-
+    st.page_link("pages/4_⚙️_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy", icon="⚙️")
 else:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")

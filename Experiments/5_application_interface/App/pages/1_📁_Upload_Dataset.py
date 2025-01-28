@@ -5,6 +5,7 @@ import streamlit as st
 st.set_page_config(
     page_title="Upload Dataset",
     page_icon="📁",
+    layout="wide",
 )
 
 st.markdown("# Upload Dataset")
@@ -13,26 +14,51 @@ st.write("""Here you can upload your dataset in CSV format. You can click to upl
 uploaded_dataset = st.file_uploader("Upload your sales data", type="csv")
 
 if uploaded_dataset is not None:
-    raw_df = pd.read_csv(uploaded_dataset)
+    raw_df = pd.read_csv(uploaded_dataset, encoding="unicode_escape")
     st.session_state['uploaded_dataset'] = raw_df
     st.success("File uploaded successfully!")
+
 
 if 'uploaded_dataset' in st.session_state:
     st.write(st.session_state['uploaded_dataset'].head())
 
     st.write("Select Columns to Use For the Forecast")
 
-    columns = st.session_state['uploaded_dataset'].copy().columns.tolist()
-    columns.insert(len(columns), "None")
+    columns = list(st.session_state['uploaded_dataset'].columns)
 
-    date_column = st.selectbox("Select the Column for Dates", columns)
+    # invoice date // pre-process data e.g. some may have times
+    if 'selected_date_column' not in st.session_state:
+        st.session_state.selected_date_column = 0
+    date_column = st.selectbox("Select the Column for Invoice Date", options=columns, index=st.session_state.selected_date_column)
     st.session_state["date_column"] = date_column
-    product_details_column = st.selectbox("Select the Column for Product Name / Category / Details", columns)
-    st.session_state["product_details_column"] = product_details_column
+    st.session_state.selected_date_column = columns.index(date_column)
 
-    sales_column = st.selectbox("Select the Column for Quantity Sold", st.session_state['uploaded_dataset'].columns.drop(date_column))
-    st.session_state["sales_column"] = sales_column
+    # productID/ProductName // separate into products and its own sales
+    if 'selected_product_column' not in st.session_state:
+        st.session_state.selected_product_column = 0
+    product_column = st.selectbox("Select the Column for Product ID / Name", options=columns,
+                                  index=st.session_state.selected_product_column)
+    st.session_state["product_column"] = product_column
+    st.session_state.selected_product_column = columns.index(product_column)
+
+    # price
+    if 'selected_price_column' not in st.session_state:
+        st.session_state.selected_price_column = 0
+    unit_price_column = st.selectbox("Select the Column for Unit Price", options=columns, index=st.session_state.selected_price_column)
+    st.session_state["unit_price_column"] = unit_price_column
+    st.session_state.selected_price_column = columns.index(unit_price_column)
+
+    # Quantity Sold
+    if 'selected_units_sold_column' not in st.session_state:
+        st.session_state.selected_units_sold_column = 0
+    units_sold_column = st.selectbox("Select the Column for Units Sold", options=columns, index=st.session_state.selected_units_sold_column)
+    st.session_state["units_sold_column"] = units_sold_column
+    st.session_state.selected_units_sold_column = columns.index(units_sold_column)
+
+    options = ["USA","UK"]
+    selected_region = st.segmented_control("Enter the region where your store is based?", options=options, selection_mode="single")
+    st.markdown(f"You Selected {selected_region}.")
+
+    st.page_link("pages/2_🔎_Explore_Data.py", label="👈 Next Stage: Visualise The Dataset", icon="🔎")
 
 
-
-    st.write("👈 Next Stage: Visualise The Dataset")

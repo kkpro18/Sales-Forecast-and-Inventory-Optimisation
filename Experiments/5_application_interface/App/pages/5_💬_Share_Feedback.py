@@ -8,6 +8,7 @@ from matplotlib.pyplot import xlabel
 st.set_page_config(
     page_title="Share Feedback",
     page_icon="💬",
+    layout="wide",
 )
 st.markdown("# Provide Feedback")
 st.write("""Share Your Feedback""")

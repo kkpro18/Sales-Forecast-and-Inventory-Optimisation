@@ -1,12 +1,12 @@
 import streamlit as st
 import pandas as pd
 # import plotly.graph_objects as go
-import simpy
 
 # to run application type this into the terminal "streamlit run 5_application_interface/App/1_📁_Upload_Dataset.py"
 st.set_page_config(
     page_title="Inventory Policy Simulator",
     page_icon="⚙",
+    layout="wide",
 )
 
 st.markdown("# Inventory Policy Simulator")

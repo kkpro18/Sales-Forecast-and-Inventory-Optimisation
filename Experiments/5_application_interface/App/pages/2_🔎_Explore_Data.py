@@ -5,6 +5,7 @@ import streamlit as st
 st.set_page_config(
     page_title="Explore Data",
     page_icon="🔎",
+    layout="wide",
 )
 st.markdown("# Explore and Clean Your Sales Dataset")
 st.write(
@@ -14,7 +15,7 @@ st.write(
 if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
     date_column = st.session_state["date_column"] # ensure its in correct form
-    sales_column = st.session_state["sales_column"]
+    sales_column = st.session_state["units_sold_column"]
     # visualise data
     visualise_button = st.button("Visualise Current Sales")
     if visualise_button:
@@ -28,6 +29,8 @@ if 'uploaded_dataset' in st.session_state:
                 )
         st.plotly_chart(figure)
 
-        st.write("👈 Next Stage: Forecast Sales")
+        st.page_link("pages/3_📈_Forecast_Sales.py", label="👈 Next Stage: Forecast Sales", icon="📈")
+
 else:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
+    st.page_link("pages/1_📁_Upload_Dataset.py", label="👈 Upload The Dataset", icon="📁")
