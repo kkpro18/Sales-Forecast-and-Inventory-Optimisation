@@ -36,8 +36,7 @@ if 'uploaded_dataset' in st.session_state:
     # productID/ProductName // separate into products and its own sales
     if 'selected_product_column' not in st.session_state:
         st.session_state.selected_product_column = 0
-    product_column = st.selectbox("Select the Column for Product ID / Name", options=columns,
-                                  index=st.session_state.selected_product_column)
+    product_column = st.selectbox("Select the Column for Product ID / Name", options=columns, index=st.session_state.selected_product_column)
     st.session_state["product_column"] = product_column
     st.session_state.selected_product_column = columns.index(product_column)
 

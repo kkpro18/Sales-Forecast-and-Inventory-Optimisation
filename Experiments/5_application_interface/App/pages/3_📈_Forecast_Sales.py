@@ -18,7 +18,6 @@ if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
     date_column = st.session_state["date_column"]
     sales_column = st.session_state["units_sold_column"]
-    st.multiselect("Select features that can be used to predict sales", uploaded_dataset.columns.drop(date_column).drop(sales_column))
 
     start_button = st.button("Begin Forecasting Sales")
 

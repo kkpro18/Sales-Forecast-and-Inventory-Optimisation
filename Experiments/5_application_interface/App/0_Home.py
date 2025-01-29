@@ -19,7 +19,7 @@ st.markdown(
     - Simulate Inventory Policies
     
     How to use this Application? (👈 Use the Sidebar to navigate this application)
-    1. Upload a dataset 📁 (Expected Columns: Invoice Date, Product ID, Unit Price, # Sold)
+    1. Upload a dataset 📁| CSV Format | Expected Columns: Invoice Date, Product ID, Unit Price, # Sold
     2. Visualise Data 🔎
     3. Forecast Sales 📈
     4. Inventory Policy Simulator ⚙️
