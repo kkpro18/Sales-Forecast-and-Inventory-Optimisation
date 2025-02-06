@@ -55,8 +55,8 @@ if 'uploaded_dataset' in st.session_state:
     st.session_state.selected_units_sold_column = columns.index(units_sold_column)
 
     options = ["USA","UK"]
-    selected_region = st.segmented_control("Enter the region where your store is based?", options=options, selection_mode="single")
-    st.markdown(f"You Selected {selected_region}.")
+    st.session_state.selected_region = st.segmented_control("Enter the region where your store is based?", options=options, selection_mode="single")
+    st.markdown(f"You Selected {st.session_state.selected_region}.")
 
     st.page_link("pages/2_🔎_Explore_Data.py", label="👈 Next Stage: Visualise The Dataset", icon="🔎")
 

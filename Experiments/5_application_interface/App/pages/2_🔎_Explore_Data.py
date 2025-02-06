@@ -1,5 +1,10 @@
+from datetime import datetime
+from time import sleep
+
+import pandas as pd
 import plotly.graph_objects as go
 import streamlit as st
+from tqdm import tqdm
 
 # to run application type this into the terminal "streamlit run 5_application_interface/App/0_Home.py"
 st.set_page_config(
@@ -7,15 +12,34 @@ st.set_page_config(
     page_icon="🔎",
     layout="wide",
 )
-st.markdown("# Explore and Clean Your Sales Dataset")
+st.markdown("# Explore Your Sales")
 st.write(
     """Here you can view your dataset and also pre-process it prior to the Sales Forecasting.""")
 
-
+tqdm.pandas()
 if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
     date_column = st.session_state["date_column"] # ensure its in correct form
     sales_column = st.session_state["units_sold_column"]
+    # Pre Process
+    # Fix Dates, Keep Consistent with region, remove extra details
+    uploaded_dataset[date_column].apply(lambda x: pd.to_datetime(x))
+    uploaded_dataset[date_column].apply(lambda x: x.date())
+    if st.session_state["selected_region"] == "UK":
+        uploaded_dataset[date_column].progress_apply(lambda x: datetime.strftime(x, '%d/%m/%Y'))
+    elif st.session_state["selected_region"] == "USA":
+        uploaded_dataset[date_column].progress_apply(lambda x: datetime.strftime(x, '%m/%d/%Y'))
+    else:
+        st.warning("Date not Valid :/")
+
+    # Identify Duplicates and Merge
+    # Missing Values
+    # Normalisation / Standardisation ?
+    # Categorical Variables to Numerical e.g OHE or Label Encoding
+    # Column Specific Date to be Numerical, Product ID to be Numerical, Data to be seperated per product,
+    # Outliers
+
+
     # visualise data
     visualise_button = st.button("Visualise Current Sales")
     if visualise_button:
