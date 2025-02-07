@@ -3,6 +3,13 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
+        <entry key="/Experiments/1_datasets/kaggle.com:datasets:tanayatipre:store-sales-forecasting-dataset/stores_sales_forecasting.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/Experiments/EconomicIndicators/US_Overall_Index_Values_200408_202411.csv">
           <value>
             <Attribute>

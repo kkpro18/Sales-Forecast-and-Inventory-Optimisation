@@ -3,10 +3,11 @@ from time import sleep
 
 import pandas as pd
 import plotly.graph_objects as go
+from stqdm import stqdm
 import streamlit as st
 from tqdm import tqdm
 
-# to run application type this into the terminal "streamlit run 5_application_interface/App/0_Home.py"
+# to run application type this into the terminal "streamlit run experiments/5_application_interface/App/0_Home.py"
 st.set_page_config(
     page_title="Explore Data",
     page_icon="🔎",
@@ -23,14 +24,21 @@ if 'uploaded_dataset' in st.session_state:
     sales_column = st.session_state["units_sold_column"]
     # Pre Process
     # Fix Dates, Keep Consistent with region, remove extra details
-    uploaded_dataset[date_column].apply(lambda x: pd.to_datetime(x))
-    uploaded_dataset[date_column].apply(lambda x: x.date())
+    st.write("Processing Dates in the Correct Format")
     if st.session_state["selected_region"] == "UK":
-        uploaded_dataset[date_column].progress_apply(lambda x: datetime.strftime(x, '%d/%m/%Y'))
+        for _ in stqdm(range(uploaded_dataset.shape[0])):
+            uploaded_dataset.at[_, date_column] = pd.to_datetime(uploaded_dataset[date_column][_]).strftime("%d/%m/%Y")
+        # uploaded_dataset[date_column] = uploaded_dataset[date_column].progress_apply(lambda x: pd.to_datetime(x).strftime("%d/%m/%Y"))
     elif st.session_state["selected_region"] == "USA":
-        uploaded_dataset[date_column].progress_apply(lambda x: datetime.strftime(x, '%m/%d/%Y'))
+        for _ in stqdm(range(uploaded_dataset.shape[0])):
+            uploaded_dataset.at[_, date_column] = pd.to_datetime(uploaded_dataset[date_column][_]).strftime("%m/%d/%Y")
+            # uploaded_dataset[date_column][_] = pd.to_datetime(uploaded_dataset[date_column][_]).strftime("%m/%d/%Y")
+
+        # uploaded_dataset[date_column] = uploaded_dataset[date_column].progress_apply(lambda x: pd.to_datetime(x).strftime("%m/%d/%Y"))
     else:
         st.warning("Date not Valid :/")
+    st.write(uploaded_dataset[date_column].head())
+
 
     # Identify Duplicates and Merge
     # Missing Values
