@@ -17,26 +17,28 @@ st.markdown("# Explore Your Sales")
 st.write(
     """Here you can view your dataset and also pre-process it prior to the Sales Forecasting.""")
 
-tqdm.pandas()
+tqdm.pandas() # for progress_apply
+
 if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
-    date_column = st.session_state["date_column"] # ensure its in correct form
-    sales_column = st.session_state["units_sold_column"]
+    date_column = st.session_state["selected_date_column"] # ensure its in correct form
+    sales_column = st.session_state["selected_units_sold_column"]
     # Pre Process
     # Fix Dates, Keep Consistent with region, remove extra details
     st.write("Processing Dates in the Correct Format")
+
     if st.session_state["selected_region"] == "UK":
         for _ in stqdm(range(uploaded_dataset.shape[0])):
             uploaded_dataset.at[_, date_column] = pd.to_datetime(uploaded_dataset[date_column][_]).strftime("%d/%m/%Y")
-        # uploaded_dataset[date_column] = uploaded_dataset[date_column].progress_apply(lambda x: pd.to_datetime(x).strftime("%d/%m/%Y"))
+        st.success("Dates have been successfully processed")
+
     elif st.session_state["selected_region"] == "USA":
         for _ in stqdm(range(uploaded_dataset.shape[0])):
             uploaded_dataset.at[_, date_column] = pd.to_datetime(uploaded_dataset[date_column][_]).strftime("%m/%d/%Y")
-            # uploaded_dataset[date_column][_] = pd.to_datetime(uploaded_dataset[date_column][_]).strftime("%m/%d/%Y")
-
-        # uploaded_dataset[date_column] = uploaded_dataset[date_column].progress_apply(lambda x: pd.to_datetime(x).strftime("%m/%d/%Y"))
+        st.success("Dates have been successfully processed")
     else:
-        st.warning("Date not Valid :/")
+        st.warning("Dates were not processed correctly :/")
+
     st.write(uploaded_dataset[date_column].head())
 
 
