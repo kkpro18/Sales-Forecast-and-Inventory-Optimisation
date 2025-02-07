@@ -21,8 +21,8 @@ tqdm.pandas() # for progress_apply
 
 if 'uploaded_dataset' in st.session_state:
     uploaded_dataset = st.session_state["uploaded_dataset"]
-    date_column = st.session_state["selected_date_column"] # ensure its in correct form
-    sales_column = st.session_state["selected_units_sold_column"]
+    date_column = st.session_state["date_column"] # ensure its in correct form
+    sales_column = st.session_state["units_sold_column"]
     # Pre Process
     # Fix Dates, Keep Consistent with region, remove extra details
     st.write("Processing Dates in the Correct Format")
