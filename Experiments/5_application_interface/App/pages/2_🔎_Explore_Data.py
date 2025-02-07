@@ -47,7 +47,8 @@ if 'uploaded_dataset' in st.session_state:
     # Normalisation / Standardisation ?
     # Categorical Variables to Numerical e.g OHE or Label Encoding
     # Column Specific Date to be Numerical, Product ID to be Numerical, Data to be seperated per product,
-    # Outliers
+    # Outliers/anomalies
+
 
 
     # visualise data
