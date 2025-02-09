@@ -1,7 +1,7 @@
+from time import sleep
+
 import pandas as pd
 import streamlit as st
-from click import confirmation_option
-from streamlit import session_state
 
 # to run application type this into the terminal "streamlit run 5_application_interface/App/0_Home.py"
 st.set_page_config(
@@ -34,7 +34,8 @@ if 'uploaded_dataset' in st.session_state:
         st.session_state.selected_date_column = 0
     date_column = st.selectbox("Select the Column for Invoice Date", options=columns, index=st.session_state.selected_date_column, disabled=st.session_state.confirmation_button_clicked)
     st.session_state["date_column"] = date_column
-    st.session_state.selected_date_column = columns.index(date_column)
+    if date_column in columns:
+        st.session_state.selected_date_column = columns.index(date_column)
 
     # productID/ProductName // separate into products and its own sales
     columns.remove(date_column)
@@ -43,7 +44,8 @@ if 'uploaded_dataset' in st.session_state:
     product_column = st.selectbox("Select the Column for Product ID / Name", options=columns, index=st.session_state.selected_product_column,
                                   disabled=st.session_state.confirmation_button_clicked)
     st.session_state["product_column"] = product_column
-    st.session_state.selected_product_column = columns.index(product_column)
+    if product_column in columns:
+        st.session_state.selected_product_column = columns.index(product_column)
 
     # price
     columns.remove(product_column)
@@ -51,11 +53,14 @@ if 'uploaded_dataset' in st.session_state:
         st.session_state.selected_price_column = 0
     unit_price_column = st.selectbox("Select the Column for Unit Price", options=columns, index=st.session_state.selected_price_column,
                                      disabled=st.session_state.confirmation_button_clicked)
+
     st.session_state["unit_price_column"] = unit_price_column
-    st.session_state.selected_price_column = columns.index(unit_price_column)
+    if unit_price_column in columns:
+        st.session_state.selected_price_column = columns.index(unit_price_column)
 
     # Quantity Sold
     columns.remove(unit_price_column)
+
     if 'selected_units_sold_column' not in st.session_state:
         st.session_state.selected_units_sold_column = 0
     units_sold_column = st.selectbox("Select the Column for Units Sold", options=columns, index=st.session_state.selected_units_sold_column,
@@ -66,19 +71,19 @@ if 'uploaded_dataset' in st.session_state:
     confirmation_button_clicked = st.button("Confirm Selected Options")
     if confirmation_button_clicked:
         st.session_state.confirmation_button_clicked = confirmation_button_clicked
-        st.session_state.uploaded_dataset = st.session_state.uploaded_dataset[
-            [date_column, product_column, unit_price_column, units_sold_column]]
         st.rerun()
+
+    st.write("Dataset with the selected columns:")
+    st.session_state.uploaded_dataset = st.session_state.uploaded_dataset[
+        [date_column, product_column, unit_price_column, units_sold_column]]
+    st.write(st.session_state.uploaded_dataset.head())
 
     options = ["UK", "USA"]
     if 'selected_region' not in st.session_state:
         st.session_state.selected_region = 0
-    selected_region = st.segmented_control("Enter the region where your store is based?", options=options, selection_mode="single", default=options[0])
+    selected_region = st.segmented_control("Enter the region where your store is based?", options=options,
+                                           selection_mode="single", default=options[0])
     st.session_state["selected_region"] = selected_region
     st.markdown(f"You Selected {st.session_state.selected_region}.")
 
-    # uploaded_dataset.drop(columns)
-
     st.page_link("pages/2_🔎_Explore_Data.py", label="👈 Next Stage: Visualise The Dataset", icon="🔎")
-
-
