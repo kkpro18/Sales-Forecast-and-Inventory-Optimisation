@@ -1,8 +1,10 @@
 from datetime import datetime
 from time import sleep
 
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from stqdm import stqdm
@@ -29,9 +31,6 @@ if 'uploaded_dataset' in st.session_state:
     unit_price_column = st.session_state["unit_price_column"]
     uploaded_dataset = uploaded_dataset[[date_column, product_column, units_sold_column, unit_price_column]]
 
-    # Pre Process
-
-
     # Fix Dates, Keep Consistent with region, remove extra details
     st.write("Processing Dates in the Correct Format")
 
@@ -40,7 +39,6 @@ if 'uploaded_dataset' in st.session_state:
     duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
     # Print the duplicate rows
     if uploaded_dataset[duplicates_exist].shape[0] != 0:
-        st.write("Duplicate rows: ", uploaded_dataset[duplicates_exist])
         uploaded_dataset = uploaded_dataset.drop_duplicates()
         duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
     if uploaded_dataset[duplicates_exist].shape[0] == 0:
@@ -53,12 +51,9 @@ if 'uploaded_dataset' in st.session_state:
     st.write("Handling Missing Values ")
     # if no dates -> out
 
-
-
     if uploaded_dataset.isnull().values.any():
         rows_with_missing_values = uploaded_dataset[uploaded_dataset.isnull().any(axis=1)]
         st.write("Data contains Missing or Null values")
-        st.write(rows_with_missing_values.head())
 
         product_imputer = SimpleImputer(strategy='most_frequent')
         sales_imputer = SimpleImputer(strategy='median')
@@ -83,48 +78,49 @@ if 'uploaded_dataset' in st.session_state:
         else:
             st.success("Missing Values Processed and Cleaned")
     else:
-        st.write("Data contains no missing or null values")
+        st.success("Data contains no missing or null values")
     # run check if format ok plot
-    if st.session_state["region"] == "UK":
+    st.write("Processing Dates into ISO8601 format")
+    if st.session_state["region"]:
         uploaded_dataset[date_column] = pd.to_datetime(uploaded_dataset[date_column], errors="coerce")
-        # uploaded_dataset[date_column] = uploaded_dataset[date_column].dt.strftime("%d/%m/%Y")
-        st.write(uploaded_dataset.head())
-        st.success("Dates have been successfully processed in the correct format")
-
-    elif st.session_state["region"] == "USA":
-        uploaded_dataset[date_column] = pd.to_datetime(uploaded_dataset[date_column], errors="coerce")
-        # uploaded_dataset[date_column] = uploaded_dataset[date_column].dt.strftime("%d/%m/%Y")
-        st.write(uploaded_dataset.head())
-        st.success("Dates have been processed in the correct format")
+        st.success("Dates have been successfully formatted!")
 
     else:
         st.warning("Dates were not processed correctly :/")
-    st.session_state.uploaded_dataset = uploaded_dataset
-    # st.session_state.uploaded_dataset = uploaded_dataset.sort_values(date_column)
-    # uploaded_dataset = st.session_state.uploaded_dataset
 
-    # if st.session_state["selected_region"] == "UK":
-    #     for i in stqdm(range(uploaded_dataset.shape[0])):
-    #         uploaded_dataset.at[i, date_column] = pd.to_datetime(
-    #             uploaded_dataset.at[i, date_column], dayfirst=True, errors="coerce"
-    #         ).strftime("%d/%m/%Y")
-    #     st.success("Dates have been successfully processed in the correct format")
-    #     st.write(uploaded_dataset[date_column].head())
-    #
-    # elif st.session_state["selected_region"] == "USA":
-    #     for i in stqdm(range(uploaded_dataset.shape[0])):
-    #         uploaded_dataset.at[i, date_column] = pd.to_datetime(
-    #             uploaded_dataset.at[i, date_column], dayfirst=False, errors="coerce"
-    #         ).strftime("%m/%d/%Y")
-    #     st.success("Dates have been successfully processed in the correct format")
-    # else:
-    #     st.warning("Dates were not processed correctly :/")
+    st.session_state.uploaded_dataset = uploaded_dataset.sort_values(date_column)
+
+    st.write("Handling Outliers")
 
 
-    # Normalisation / Standardisation ?
+    # outliers - Z-score to identify outliers
+    # mean = np.mean(uploaded_dataset[units_sold_column])
+    # std = np.std(uploaded_dataset[units_sold_column])
+    # z_scores = (uploaded_dataset[units_sold_column] - mean) / std
+    # outlier_indices = np.where(np.abs(z_scores) > 1.5) # outliers are defined as values with 1.5 standard deviation away
+    # outlier_values = uploaded_dataset[units_sold_column].iloc[outlier_indices]
+
+    z_scores = np.abs(zscore(uploaded_dataset[units_sold_column]))
+    outlier_indices = np.where(np.abs(z_scores) > 1.5)
+    outlier_values = uploaded_dataset[units_sold_column].iloc[outlier_indices]
+
+
+
+    st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
+    st.write(f"Total No. Values in Sales Column {uploaded_dataset[units_sold_column].shape[0]}")
+    outlier_proportion = float("%.2f" % (outlier_values.shape[0] / uploaded_dataset[units_sold_column].shape[0] * 100))
+    st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
+
+    if outlier_proportion > 10:
+        "complete timeseries"
+
+    else:
+        uploaded_dataset = np.delete(uploaded_dataset, outlier_indices, axis=0)
+        st.success(f"{outlier_values.shape[0]} outliers have been removed")
+
     # Categorical Variables to Numerical e.g OHE or Label Encoding
-    # Column Specific validation.. Date to be Numerical, Product ID to be Numerical, Data to be seperated per product,
-    # Outliers/anomalies
+    # Normalisation / Standardisation
+    # feature scaling
 
     # visualise data
     visualise_button = st.button("Visualise Current Sales")
