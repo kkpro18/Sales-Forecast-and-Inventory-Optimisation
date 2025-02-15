@@ -4,6 +4,7 @@ from time import sleep
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from pyarrow.compute import fill_null
 from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
@@ -92,31 +93,27 @@ if 'uploaded_dataset' in st.session_state:
 
     st.write("Handling Outliers")
 
-
-    # outliers - Z-score to identify outliers
-    # mean = np.mean(uploaded_dataset[units_sold_column])
-    # std = np.std(uploaded_dataset[units_sold_column])
-    # z_scores = (uploaded_dataset[units_sold_column] - mean) / std
-    # outlier_indices = np.where(np.abs(z_scores) > 1.5) # outliers are defined as values with 1.5 standard deviation away
-    # outlier_values = uploaded_dataset[units_sold_column].iloc[outlier_indices]
-
     z_scores = np.abs(zscore(uploaded_dataset[units_sold_column]))
-    outlier_indices = np.where(np.abs(z_scores) > 1.5)
+    outlier_indices = np.where(abs(z_scores) > 1.5)[0]
     outlier_values = uploaded_dataset[units_sold_column].iloc[outlier_indices]
-
-
 
     st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
     st.write(f"Total No. Values in Sales Column {uploaded_dataset[units_sold_column].shape[0]}")
     outlier_proportion = float("%.2f" % (outlier_values.shape[0] / uploaded_dataset[units_sold_column].shape[0] * 100))
     st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
 
-    if outlier_proportion > 10:
-        "complete timeseries"
+    if outlier_proportion > 0:
+        uploaded_dataset.loc[uploaded_dataset.index[outlier_indices], units_sold_column] = np.nan
+        # uploaded_dataset = uploaded_dataset.assign(FillMean=uploaded_dataset[units_sold_column].fillna(uploaded_dataset[units_sold_column].mean()))
+
+        uploaded_dataset[units_sold_column] = uploaded_dataset.groupby(product_column)[units_sold_column].transform(lambda x: round(x.fillna(x.mean()) if not x.mean().isna() else x.mode()))
+        st.write(uploaded_dataset.iloc[outlier_indices])
+
 
     else:
-        uploaded_dataset = np.delete(uploaded_dataset, outlier_indices, axis=0)
+        uploaded_dataset = uploaded_dataset.drop(uploaded_dataset.index[outlier_indices]) # indexing may be a categorical or dates, so this would be an index safe method
         st.success(f"{outlier_values.shape[0]} outliers have been removed")
+
 
     # Categorical Variables to Numerical e.g OHE or Label Encoding
     # Normalisation / Standardisation
