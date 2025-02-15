@@ -4,6 +4,7 @@ from time import sleep
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.validators.box import Q1SrcValidator
 from pyarrow.compute import fill_null
 from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
@@ -93,8 +94,21 @@ if 'uploaded_dataset' in st.session_state:
 
     st.write("Handling Outliers")
 
-    z_scores = np.abs(zscore(uploaded_dataset[units_sold_column]))
-    outlier_indices = np.where(abs(z_scores) > 1.5)[0]
+    outlier_indices = []
+
+
+    for product, product_group in uploaded_dataset.groupby(product_column):
+        Q1 = uploaded_dataset[units_sold_column].quantile(0.25)
+        Q3 = uploaded_dataset[units_sold_column].quantile(0.75)
+        IQR = Q3 - Q1
+        threshold = 1.5
+        outlier_indices.extend(np.where(
+            (uploaded_dataset[units_sold_column] < Q1 - threshold * IQR) | (uploaded_dataset[units_sold_column] > Q3 + threshold * IQR))).tolist()
+
+
+        z_scores = np.abs(zscore(product_group[units_sold_column], nan_policy="omit")) # try Median Absolute Deviation (MAD)
+        outlier_indices.extend(np.where(abs(z_scores) > 1.5)[0]) # test different thresholds
+    outlier_indices = list(set(outlier_indices))
     outlier_values = uploaded_dataset[units_sold_column].iloc[outlier_indices]
 
     st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
@@ -102,11 +116,13 @@ if 'uploaded_dataset' in st.session_state:
     outlier_proportion = float("%.2f" % (outlier_values.shape[0] / uploaded_dataset[units_sold_column].shape[0] * 100))
     st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
 
-    if outlier_proportion > 0:
+    if outlier_proportion > 0: # greater than 10% of dataset
         uploaded_dataset.loc[uploaded_dataset.index[outlier_indices], units_sold_column] = np.nan
-        # uploaded_dataset = uploaded_dataset.assign(FillMean=uploaded_dataset[units_sold_column].fillna(uploaded_dataset[units_sold_column].mean()))
+        imputer = SimpleImputer(strategy='mean')
 
-        uploaded_dataset[units_sold_column] = uploaded_dataset.groupby(product_column)[units_sold_column].transform(lambda x: round(x.fillna(x.mean()) if not x.mean().isna() else x.mode()))
+        uploaded_dataset[units_sold_column] = uploaded_dataset.groupby(product_column)[units_sold_column].transform(
+            lambda x: round(x.fillna(x.mean()))
+        )
         st.write(uploaded_dataset.iloc[outlier_indices])
 
 
