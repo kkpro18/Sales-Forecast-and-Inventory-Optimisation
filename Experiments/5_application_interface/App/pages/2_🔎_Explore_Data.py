@@ -9,6 +9,7 @@ from pyarrow.compute import fill_null
 from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import OneHotEncoder
 from stqdm import stqdm
 import streamlit as st
 from tqdm import tqdm
@@ -90,26 +91,33 @@ if 'uploaded_dataset' in st.session_state:
     else:
         st.warning("Dates were not processed correctly :/")
 
-    st.session_state.uploaded_dataset = uploaded_dataset.sort_values(date_column)
+    st.session_state.uploaded_dataset = uploaded_dataset.sort_values(date_column).reset_index(drop=True)
 
     st.write("Handling Outliers")
 
     outlier_indices = []
 
+    if (uploaded_dataset[units_sold_column] < 0).sum() > 0:
+        st.session_state.uploaded_dataset = uploaded_dataset[uploaded_dataset[units_sold_column] >= 0].copy()
+        uploaded_dataset = uploaded_dataset[uploaded_dataset[units_sold_column] >= 0].copy()
 
     for product, product_group in uploaded_dataset.groupby(product_column):
-        Q1 = uploaded_dataset[units_sold_column].quantile(0.25)
-        Q3 = uploaded_dataset[units_sold_column].quantile(0.75)
+        Q1 = product_group[units_sold_column].quantile(0.25)
+        Q3 = product_group[units_sold_column].quantile(0.75)
         IQR = Q3 - Q1
         threshold = 1.5
-        outlier_indices.extend(np.where(
-            (uploaded_dataset[units_sold_column] < Q1 - threshold * IQR) | (uploaded_dataset[units_sold_column] > Q3 + threshold * IQR))).tolist()
-
-
+        iqr_outlier_indices = product_group[(product_group[units_sold_column] < Q1 - threshold * IQR)
+                                            |
+                                            (product_group[units_sold_column] > Q3 + threshold * IQR)].index
         z_scores = np.abs(zscore(product_group[units_sold_column], nan_policy="omit")) # try Median Absolute Deviation (MAD)
-        outlier_indices.extend(np.where(abs(z_scores) > 1.5)[0]) # test different thresholds
+        z_score_outlier_indices = product_group[abs(z_scores) > 1.5].index # test different thresholds
+
+        outlier_indices.extend(iqr_outlier_indices)
+        outlier_indices.extend(z_score_outlier_indices)
+
     outlier_indices = list(set(outlier_indices))
-    outlier_values = uploaded_dataset[units_sold_column].iloc[outlier_indices]
+    outlier_values = uploaded_dataset[units_sold_column].loc[outlier_indices]
+
 
     st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
     st.write(f"Total No. Values in Sales Column {uploaded_dataset[units_sold_column].shape[0]}")
@@ -117,21 +125,29 @@ if 'uploaded_dataset' in st.session_state:
     st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
 
     if outlier_proportion > 0: # greater than 10% of dataset
-        uploaded_dataset.loc[uploaded_dataset.index[outlier_indices], units_sold_column] = np.nan
+        uploaded_dataset.loc[outlier_indices, units_sold_column] = np.nan
         imputer = SimpleImputer(strategy='mean')
 
         uploaded_dataset[units_sold_column] = uploaded_dataset.groupby(product_column)[units_sold_column].transform(
             lambda x: round(x.fillna(x.mean()))
         )
-        st.write(uploaded_dataset.iloc[outlier_indices])
-
-
     else:
         uploaded_dataset = uploaded_dataset.drop(uploaded_dataset.index[outlier_indices]) # indexing may be a categorical or dates, so this would be an index safe method
         st.success(f"{outlier_values.shape[0]} outliers have been removed")
 
 
     # Categorical Variables to Numerical e.g OHE or Label Encoding
+
+    one_hot_encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
+    one_hot_encoder.fit(uploaded_dataset[[product_column]])
+    one_hot_encoded = one_hot_encoder.transform(uploaded_dataset[[product_column]])
+
+    uploaded_dataset = uploaded_dataset.drop(columns=[product_column])  # Remove original column
+    uploaded_dataset[one_hot_encoder.get_feature_names_out([product_column])] = one_hot_encoded  # Add new columns
+    st.write("ONE HOT ENCODER ", uploaded_dataset)
+
+
+
     # Normalisation / Standardisation
     # feature scaling
 
