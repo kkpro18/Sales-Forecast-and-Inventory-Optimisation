@@ -13,6 +13,7 @@ from sklearn.preprocessing import OneHotEncoder
 from stqdm import stqdm
 import streamlit as st
 from tqdm import tqdm
+from category_encoders import *
 
 # to run application type this into the terminal "streamlit run experiments/5_application_interface/App/0_Home.py"
 st.set_page_config(
@@ -67,9 +68,11 @@ if 'uploaded_dataset' in st.session_state:
         # st.write(rows_with_missing_values.head())
         uploaded_dataset.dropna(subset=[date_column], inplace=True)
         ct = ColumnTransformer(
-            [("product_imputer", product_imputer, [product_column]),
+            [
+             ("product_imputer", product_imputer, [product_column]),
              ("sales_imputer", sales_imputer, [units_sold_column]),
-             ("price_imputer", price_imputer, [unit_price_column])],
+             ("price_imputer", price_imputer, [unit_price_column])
+            ],
             verbose_feature_names_out=False,
             remainder="passthrough")
 
@@ -138,15 +141,10 @@ if 'uploaded_dataset' in st.session_state:
 
     # Categorical Variables to Numerical e.g OHE or Label Encoding
 
-    one_hot_encoder = OneHotEncoder(handle_unknown='ignore', sparse_output=False)
-    one_hot_encoder.fit(uploaded_dataset[[product_column]])
-    one_hot_encoded = one_hot_encoder.transform(uploaded_dataset[[product_column]])
-
-    uploaded_dataset = uploaded_dataset.drop(columns=[product_column])  # Remove original column
-    uploaded_dataset[one_hot_encoder.get_feature_names_out([product_column])] = one_hot_encoded  # Add new columns
-    st.write("ONE HOT ENCODER ", uploaded_dataset)
-
-
+    target_encoder = TargetEncoder(cols=product_column)
+    uploaded_dataset[product_column] = target_encoder.fit_transform(uploaded_dataset[product_column], uploaded_dataset[units_sold_column])
+    # st.write("Target Encoded Result ", uploaded_dataset.sort_values(units_sold_column, ascending=True).head(5))
+    st.success("Product Column has been converted to a numerical format using Target Encoding")
 
     # Normalisation / Standardisation
     # feature scaling
