@@ -1,19 +1,13 @@
-from datetime import datetime
-from time import sleep
-
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.validators.box import Q1SrcValidator
-from pyarrow.compute import fill_null
+# from stqdm import stqdm
+import streamlit as st
+from category_encoders import *
 from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-from sklearn.preprocessing import OneHotEncoder
-from stqdm import stqdm
-import streamlit as st
 from tqdm import tqdm
-from category_encoders import *
 
 # to run application type this into the terminal "streamlit run experiments/5_application_interface/App/0_Home.py"
 st.set_page_config(
@@ -38,7 +32,7 @@ if 'uploaded_dataset' in st.session_state:
     # Fix Dates, Keep Consistent with region, remove extra details
     st.write("Processing Dates in the Correct Format")
 
-    # Identify Duplicates and drop // maybe should keep incase identicial sales occur
+    # Identify Duplicates and drop // maybe should keep incase identical sales occur
     st.write("Handling Duplicates Rows")
     duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
     # Print the duplicate rows
@@ -59,19 +53,17 @@ if 'uploaded_dataset' in st.session_state:
         rows_with_missing_values = uploaded_dataset[uploaded_dataset.isnull().any(axis=1)]
         st.write("Data contains Missing or Null values")
 
-        product_imputer = SimpleImputer(strategy='most_frequent')
-        sales_imputer = SimpleImputer(strategy='median')
-        price_imputer = SimpleImputer(strategy='mean')
-
-        rows_with_missing_values = uploaded_dataset[uploaded_dataset.isnull().any(axis=1)]
+        product_impute = SimpleImputer(strategy='most_frequent')
+        sales_impute = SimpleImputer(strategy='median')
+        price_impute = SimpleImputer(strategy='mean')
 
         # st.write(rows_with_missing_values.head())
         uploaded_dataset.dropna(subset=[date_column], inplace=True)
         ct = ColumnTransformer(
             [
-             ("product_imputer", product_imputer, [product_column]),
-             ("sales_imputer", sales_imputer, [units_sold_column]),
-             ("price_imputer", price_imputer, [unit_price_column])
+             ("product_impute", product_impute, [product_column]),
+             ("sales_impute", sales_impute, [units_sold_column]),
+             ("price_impute", price_impute, [unit_price_column])
             ],
             verbose_feature_names_out=False,
             remainder="passthrough")
@@ -127,42 +119,57 @@ if 'uploaded_dataset' in st.session_state:
     outlier_proportion = float("%.2f" % (outlier_values.shape[0] / uploaded_dataset[units_sold_column].shape[0] * 100))
     st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
 
-    if outlier_proportion > 0: # greater than 10% of dataset
+    if outlier_proportion > 10: # greater than 10% of dataset
         uploaded_dataset.loc[outlier_indices, units_sold_column] = np.nan
-        imputer = SimpleImputer(strategy='mean')
+        impute = SimpleImputer(strategy='mean')
 
         uploaded_dataset[units_sold_column] = uploaded_dataset.groupby(product_column)[units_sold_column].transform(
             lambda x: round(x.fillna(x.mean()))
         )
+        st.success(f"{outlier_values.shape[0]} outliers have been processed")
     else:
-        uploaded_dataset = uploaded_dataset.drop(uploaded_dataset.index[outlier_indices]) # indexing may be a categorical or dates, so this would be an index safe method
+        uploaded_dataset = uploaded_dataset.drop(outlier_indices) # indexing may be a categorical or dates, so this would be an index safe method
         st.success(f"{outlier_values.shape[0]} outliers have been removed")
 
 
     # Categorical Variables to Numerical e.g OHE or Label Encoding
 
     target_encoder = TargetEncoder(cols=product_column)
-    uploaded_dataset[product_column] = target_encoder.fit_transform(uploaded_dataset[product_column], uploaded_dataset[units_sold_column])
+    uploaded_dataset["product_encoded"] = target_encoder.fit_transform(uploaded_dataset[product_column], uploaded_dataset[units_sold_column])
     # st.write("Target Encoded Result ", uploaded_dataset.sort_values(units_sold_column, ascending=True).head(5))
-    st.success("Product Column has been converted to a numerical format using Target Encoding")
+    st.success("Product Column has been successfully encoded")
 
-    # Normalisation / Standardisation
-    # feature scaling
+    # Normalisation / Standardisation # not required for arima but required for neural networks
+
+    # feature scaling / engineering
 
     # visualise data
     visualise_button = st.button("Visualise Current Sales")
-    if visualise_button:
-        figure = go.Figure()
-        figure.add_trace(go.Scatter(x=uploaded_dataset[date_column],y=uploaded_dataset[units_sold_column]))
-        figure.update_layout(
-                    title_text="Current Sales Data",
-                    xaxis=dict(rangeslider=dict(visible=True), type="date"),
-                    xaxis_title=date_column,
-                    yaxis_title=units_sold_column,
-                )
-        st.plotly_chart(figure)
+    # st.write(uploaded_dataset)
 
-        st.page_link("pages/3_📈_Forecast_Sales.py", label="👈 Next Stage: Forecast Sales", icon="📈")
+    if visualise_button:
+        store_overall_sales_figure = go.Figure()
+        store_overall_sales_figure.add_trace(go.Scatter(x=uploaded_dataset[date_column], y=uploaded_dataset[units_sold_column]))
+        store_overall_sales_figure.update_layout(
+            title_text=f"Current Sales Data for whole store",
+            xaxis=dict(rangeslider=dict(visible=True), type="date"),
+            xaxis_title=date_column,
+            yaxis_title=units_sold_column,
+        )
+        st.plotly_chart(store_overall_sales_figure)
+    if st.button("View Individual Product Sales"):
+        for product, product_group in uploaded_dataset.groupby(product_column):
+            figure = go.Figure()
+            figure.add_trace(go.Scatter(x=product_group[date_column], y=product_group[units_sold_column]))
+            figure.update_layout(
+                title_text=f"Current Sales Data for Product {product}",
+                xaxis=dict(rangeslider=dict(visible=True), type="date"),
+                xaxis_title=date_column,
+                yaxis_title=units_sold_column,
+            )
+            st.plotly_chart(figure)
+    st.page_link("pages/3_📈_Forecast_Sales.py", label="👈 Next Stage: Forecast Sales", icon="📈")
+
 
 else:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
