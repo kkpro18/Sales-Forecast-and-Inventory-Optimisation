@@ -1,3 +1,5 @@
+import warnings
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
@@ -18,6 +20,8 @@ st.set_page_config(
 st.markdown("# Explore Your Sales")
 st.write(
     """Here you can view your dataset and also pre-process it prior to the Sales Forecasting.""")
+
+warnings.filterwarnings("ignore")
 
 tqdm.pandas() # for progress_apply
 
@@ -142,9 +146,13 @@ if 'uploaded_dataset' in st.session_state:
     # Normalisation / Standardisation # not required for arima but required for neural networks
 
     # feature scaling / engineering
+    # create lag features - previous day quantity sold, and for product specific dfs, do same
+    st.session_state.uploaded_dataset = uploaded_dataset
 
     # visualise data
-    # st.write(uploaded_dataset)
+    see_data = st.button("See Data")
+    if see_data:
+        st.write(uploaded_dataset.head(10))
 
     if "product_index" not in st.session_state:
         st.session_state.product_index = 0
