@@ -144,33 +144,62 @@ if 'uploaded_dataset' in st.session_state:
     # feature scaling / engineering
 
     # visualise data
-    visualise_button = st.button("Visualise Current Sales")
     # st.write(uploaded_dataset)
 
-    if visualise_button:
+    if "product_index" not in st.session_state:
+        st.session_state.product_index = 0
+    if "is_first" not in st.session_state or st.session_state["product_index"] == 0:
+        st.session_state["is_first"] = True
+    elif st.session_state["product_index"] > 0:
+        st.session_state["is_first"] = False
+
+    if st.button("Visualise Current Sales"):
         store_overall_sales_figure = go.Figure()
         store_overall_sales_figure.add_trace(go.Scatter(x=uploaded_dataset[date_column], y=uploaded_dataset[units_sold_column]))
         store_overall_sales_figure.update_layout(
             title_text=f"Current Sales Data for whole store",
             xaxis=dict(rangeslider=dict(visible=True), type="date"),
             xaxis_title=date_column,
+            yaxis_title=units_sold_column,)
+        st.plotly_chart(store_overall_sales_figure)
+
+    all_products_grouped = uploaded_dataset.groupby(product_column)
+    unique_products = [product_name for product_name, product_group in uploaded_dataset.groupby(product_column)]
+
+    def plot_individual_product():
+        figure = go.Figure()
+        figure.add_trace(go.Scatter(
+            x=all_products_grouped.get_group(unique_products[st.session_state.product_index])[date_column],
+            y=all_products_grouped.get_group(unique_products[st.session_state.product_index])[units_sold_column])
+        )
+        figure.update_layout(
+            title_text=f"Current Sales Data for Product {unique_products[st.session_state.product_index]}",
+            xaxis=dict(rangeslider=dict(visible=True), type="date"),
+            xaxis_title=date_column,
             yaxis_title=units_sold_column,
         )
-        st.plotly_chart(store_overall_sales_figure)
-    if st.button("View Individual Product Sales"):
-        for product, product_group in uploaded_dataset.groupby(product_column):
-            figure = go.Figure()
-            figure.add_trace(go.Scatter(x=product_group[date_column], y=product_group[units_sold_column]))
-            figure.update_layout(
-                title_text=f"Current Sales Data for Product {product}",
-                xaxis=dict(rangeslider=dict(visible=True), type="date"),
-                xaxis_title=date_column,
-                yaxis_title=units_sold_column,
-            )
-            st.plotly_chart(figure)
+        st.plotly_chart(figure)
+
+    if st.button("Visualise Individual Product Sales"):
+        st.session_state.product_index = 0
+        plot_individual_product()
+
+    left_column, right_column = st.columns(2)
+    previous_button = left_column.button("Previous", disabled=st.session_state.is_first)
+    next_button = right_column.button("Next")
+
+    if previous_button:
+        st.session_state.product_index -= 1
+        if st.session_state.product_index != 0 < len(all_products_grouped) - 1:
+            plot_individual_product()
+
+    elif next_button:
+        st.session_state["is_first"] = False
+        st.session_state.product_index += 1
+        if 0 <= st.session_state.product_index < len(all_products_grouped) - 1:
+            plot_individual_product()
+
     st.page_link("pages/3_📈_Forecast_Sales.py", label="👈 Next Stage: Forecast Sales", icon="📈")
-
-
 else:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
     st.page_link("pages/1_📁_Upload_Dataset.py", label="👈 Upload The Dataset", icon="📁")
