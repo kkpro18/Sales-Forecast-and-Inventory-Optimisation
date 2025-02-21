@@ -147,6 +147,7 @@ if 'uploaded_dataset' in st.session_state:
 
     # feature scaling / engineering
     # create lag features - previous day quantity sold, and for product specific dfs, do same
+
     st.session_state.uploaded_dataset = uploaded_dataset
 
     # visualise data
@@ -156,10 +157,12 @@ if 'uploaded_dataset' in st.session_state:
 
     if "product_index" not in st.session_state:
         st.session_state.product_index = 0
+        st.session_state["is_first"] = True
     if "is_first" not in st.session_state or st.session_state["product_index"] == 0:
         st.session_state["is_first"] = True
     elif st.session_state["product_index"] > 0:
         st.session_state["is_first"] = False
+    # WHY NOT MIN MAX SCALER?
 
     if st.button("Visualise Current Sales"):
         store_overall_sales_figure = go.Figure()
