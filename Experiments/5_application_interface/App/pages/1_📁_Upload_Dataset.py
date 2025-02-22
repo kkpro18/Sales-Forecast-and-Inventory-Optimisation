@@ -3,7 +3,7 @@ from time import sleep
 import pandas as pd
 import streamlit as st
 
-# to run application type this into the terminal "streamlit run 5_application_interface/App/0_Home.py"
+# to run application type this into the terminal " streamlit run experiments/5_application_interface/App/0_Home.py "
 st.set_page_config(
     page_title="Upload Dataset",
     page_icon="📁",

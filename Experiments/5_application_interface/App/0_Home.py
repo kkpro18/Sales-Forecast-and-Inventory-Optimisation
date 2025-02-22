@@ -1,6 +1,6 @@
 import streamlit as st
 
-# to run application type this into the terminal "streamlit run 5_application_interface/App/1_📁_Upload_Dataset.py"
+# to run application type this into the terminal " streamlit run Experiments/5_application_interface/App/0_Home.py "
 st.set_page_config(
     page_title="Sales Forecasting App",
     page_icon="🏠",

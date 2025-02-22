@@ -1,7 +1,6 @@
 import sklearn.model_selection
 import streamlit as st
 import statsmodels
-from attr.filters import exclude
 from statsmodels.tsa.stattools import adfuller
 import pmdarima as pm
 import pandas as pd
@@ -22,7 +21,8 @@ if 'uploaded_dataset' in st.session_state:
     product_column = st.session_state["product_column"]
     unit_price_column = st.session_state["unit_price_column"]
     uploaded_dataset = st.session_state["uploaded_dataset"][[date_column, "product_encoded", units_sold_column, unit_price_column]]
-    uploaded_dataset.set_index(date_column, inplace=True).sort_index()
+    uploaded_dataset.set_index(date_column, inplace=True)
+    uploaded_dataset.sort_index(inplace=True)
 
 
     start_button = st.button("Begin Forecasting Sales")
@@ -30,24 +30,29 @@ if 'uploaded_dataset' in st.session_state:
     if start_button:
         # check if data is stationary, otherwise apply differencing until stationary - number of differencing steps is noted as d value
         # ADF Test
-        sales_data = pd.DataFrame(uploaded_dataset[units_sold_column].head(10000), index=uploaded_dataset.index)
 
-        result = adfuller(sales_data.head(100)) # as data is huge for now we test with head
+        result = adfuller(uploaded_dataset[units_sold_column].values) # as data is huge for now we test with head
         print("ADF statistic:", result[0])
         print("p-value:", result[1])
         print("Critical values:", result[4])
 
         if result[1] < 0.05:  # less than significance level, so is stationary
             st.write("The data is stationary, so we reject the null hypothesis and our d value is 0")
-            warnings.filterwarnings("ignore")
-            """
-            Daily Data m=7 weekly, m=14 biweekly two weeks for pay,  m=30 - monthly , m=365 - yearly
-            Weekly Data m=2 - biweekly, m=4 - 4 weeks, m=52 - yearly depending on how seasonality repeats
-            Monthly Data m=3 - quarterly, m=12 - yearly
-            Quarterly Data m=4 yearly
-            """
+            # warnings.filterwarnings("ignore")
+            # """
+            # Daily Data m=7 weekly, m=14 biweekly two weeks for pay,  m=30 - monthly , m=365 - yearly
+            # Weekly Data m=2 - biweekly, m=4 - 4 weeks, m=52 - yearly depending on how seasonality repeats
+            # Monthly Data m=3 - quarterly, m=12 - yearly
+            # Quarterly Data m=4 yearly
+            # """
 
-            X_train, Y_train, x_test, y_test = sklearn.model_selection.train_test_split(X=uploaded_dataset[date_column])
+            train_size = int(len(uploaded_dataset)*0.70)
+            train_split_index = uploaded_dataset.index(train_size)
+            train = uploaded_dataset[:train_split_index]
+            test = uploaded_dataset[train_split_index:]
+
+            Y_train, y_test = train[units_sold_column], test[units_sold_column]
+
             st.write("ARIMA")
             stepwise_fit_ARIMA = pm.auto_arima(uploaded_dataset,
                                          start_p=1, start_q=1,
