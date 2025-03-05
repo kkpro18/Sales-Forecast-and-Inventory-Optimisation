@@ -36,15 +36,17 @@ if 'uploaded_dataset' in st.session_state:
     # Fix Dates, Keep Consistent with region, remove extra details
     st.write("Processing Dates in the Correct Format")
 
-    # Identify Duplicates and drop // maybe should keep incase identical sales occur
-    st.write("Handling Duplicates Rows")
-    duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
-    # Print the duplicate rows
-    if uploaded_dataset[duplicates_exist].shape[0] != 0:
-        uploaded_dataset = uploaded_dataset.drop_duplicates()
-        duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
-    if uploaded_dataset[duplicates_exist].shape[0] == 0:
-        st.success("Duplicates have been successfully removed")
+    # # Identify Duplicates and drop // maybe should keep incase identical sales occur
+    # st.write("Handling Duplicates Rows")
+    # duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
+    # # Print the duplicate rows
+    # if uploaded_dataset[duplicates_exist].shape[0] != 0:
+    #     uploaded_dataset = uploaded_dataset.drop_duplicates()
+    #     duplicates_exist = uploaded_dataset.duplicated(keep=False)  # `keep=False` marks all duplicates as True
+    # if uploaded_dataset[duplicates_exist].shape[0] == 0:
+    #     st.success("Duplicates have been successfully removed")
+
+    # skip duplicate filters as duplicate transactions are very possible
 
     # if non-numeric values found, make them null in dates, sales, quantity, price
 
@@ -85,12 +87,14 @@ if 'uploaded_dataset' in st.session_state:
     st.write("Processing Dates into ISO8601 format")
     if st.session_state["region"]:
         uploaded_dataset[date_column] = pd.to_datetime(uploaded_dataset[date_column], errors="coerce")
+        uploaded_dataset[date_column] = uploaded_dataset[date_column].fillna(method='ffill')
+
         st.success("Dates have been successfully formatted!")
 
     else:
         st.warning("Dates were not processed correctly :/")
 
-    st.session_state.uploaded_dataset = uploaded_dataset.sort_values(date_column).reset_index(drop=True)
+    # st.session_state.uploaded_dataset = uploaded_dataset.sort_values(date_column).reset_index(drop=True)
 
     st.write("Handling Outliers")
 
@@ -116,7 +120,6 @@ if 'uploaded_dataset' in st.session_state:
 
     outlier_indices = list(set(outlier_indices))
     outlier_values = uploaded_dataset[units_sold_column].loc[outlier_indices]
-
 
     st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
     st.write(f"Total No. Values in Sales Column {uploaded_dataset[units_sold_column].shape[0]}")

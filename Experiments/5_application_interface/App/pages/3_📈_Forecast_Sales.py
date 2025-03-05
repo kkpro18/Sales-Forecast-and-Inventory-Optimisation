@@ -2,12 +2,15 @@ import sklearn.model_selection
 import streamlit as st
 import statsmodels
 import plotly.graph_objects as go
-from sklearn.metrics import root_mean_squared_error
+from matplotlib import animation
+from matplotlib.dates import DateFormatter
+from sklearn.metrics import root_mean_squared_error, r2_score
 from sktime.performance_metrics.forecasting import mean_absolute_error
 from statsmodels.tsa.stattools import adfuller
 import pmdarima as pm
 import pandas as pd
 import warnings
+import matplotlib.pyplot as plt
 
 # to run application type this into the terminal "streamlit run 5_application_interface/App/0_Home.py"
 st.set_page_config(
@@ -26,12 +29,36 @@ if 'uploaded_dataset' in st.session_state:
     """
     using 25% to speed up model fitting
     """
-    uploaded_dataset = st.session_state["uploaded_dataset"][[date_column, "product_encoded", units_sold_column, unit_price_column]].head(int(0.25 * st.session_state["uploaded_dataset"].shape[0]))
+    #                                                                                                                              change below to make full data
+    uploaded_dataset = st.session_state["uploaded_dataset"][[date_column, "product_encoded", units_sold_column, unit_price_column]].head(int(0.02 * st.session_state["uploaded_dataset"].shape[0]))
     uploaded_dataset.set_index(date_column, inplace=True)
     uploaded_dataset.sort_index(inplace=True)
 
-
     start_button = st.button("Begin Forecasting Sales")
+
+
+    def animate_data(X_test, y_test, y_test_prediction):
+        # Create the plot with True and Predicted values
+        fig = go.Figure()
+
+        fig.add_trace(go.Scatter(x=X_test, y=y_test, mode='lines', name='True'))
+        fig.add_trace(go.Scatter(x=X_test, y=y_test_prediction, mode='lines', name='Predicted'))
+
+        # Animation frames
+        fig.frames = [go.Frame(data=[go.Scatter(x=X_test[:i + 1], y=y_test[:i + 1], mode='lines'),
+                                     go.Scatter(x=X_test[:i + 1], y=y_test_prediction[:i + 1], mode='lines')],
+                               name=str(i)) for i in range(len(X_test))]
+
+        # Play/Pause buttons
+        fig.update_layout(updatemenus=[dict(type='buttons', buttons=[
+            dict(label='Play', method='animate',
+                 args=[None, dict(frame=dict(duration=50, redraw=True), fromcurrent=True)]),
+            dict(label='Pause', method='animate',
+                 args=[[None], dict(frame=dict(duration=0, redraw=True), mode='immediate')])
+        ])])
+
+        return fig
+
 
     if start_button:
         # check if data is stationary, otherwise apply differencing until stationary - number of differencing steps is noted as d value
@@ -53,60 +80,89 @@ if 'uploaded_dataset' in st.session_state:
             # """
 
             train_size = int(len(uploaded_dataset)*0.70)
-            train_split_index = uploaded_dataset.index[train_size]
-            train = uploaded_dataset[:train_split_index]
-            test = uploaded_dataset[train_split_index:]
+            # train_split_index = uploaded_dataset.index[train_size]
+            train = uploaded_dataset[:train_size]
+            print("Train: ", train)
+
+
+            test = uploaded_dataset[train_size:]
+            print("Test: ", test)
+
             X_train, X_test = train.index, test.index
             Y_train, y_test = train[units_sold_column], test[units_sold_column]
 
             st.write("ARIMA")
-            stepwise_fit_ARIMA = pm.auto_arima(uploaded_dataset[units_sold_column], # feed in just one variable as uni variate model - just learn trends from sales
-                                         start_p=1, start_q=1,
-                                         max_p=3, max_q=3,
-                                         seasonal=False,
-                                         d=None, trace=True,
-                                         error_action='ignore',  # don't want to know if an order does not work
-                                         suppress_warnings=True,  # don't want convergence warnings
-                                         stepwise=True)  # set to stepwise
+            stepwise_fit_ARIMA = pm.auto_arima(uploaded_dataset[units_sold_column], # feed in just one variable - uni variate model - learn trends from sales
+                                         seasonal=False, trace=True,
+                                         error_action='ignore',  # don't need to know if an order does not work
+                                         suppress_warnings=False,  # don't want convergence warnings
+                                         stepwise=True, n_jobs=-1)  # set to stepwise which skips some combinations, becomes quicker, n_jobs uses all processor cores for faster build
 
             st.write(stepwise_fit_ARIMA.summary())
 
             y_test_prediction_ARIMA = stepwise_fit_ARIMA.predict(len(X_test))
 
             mean_absolute_error = mean_absolute_error(y_test, y_test_prediction_ARIMA)
-            st.write(mean_absolute_error)
+            st.write("Mean Absolute Error: ", mean_absolute_error)
 
             root_mean_squared_error = root_mean_squared_error(y_test, y_test_prediction_ARIMA)
-            st.write(root_mean_squared_error)
+            st.write("Root Mean Squared Error: ", root_mean_squared_error)
 
-            import matplotlib.pyplot as plt
-            fig = plt.figure(figsize=[8,8])
-            plt.plot(y_test.index, y_test, label="Actual", color="blue", marker="o")
-            plt.plot(y_test.index, y_test_prediction_ARIMA, label="Forecast", color="red", marker="o")
-            plt.legend()
-            plt.xlabel("Date")
-            plt.ylabel("Sales")
-            plt.title("Sales Forecast vs Actual")
-            st.pyplot(fig)
+            r_squared = r2_score(y_test, y_test_prediction_ARIMA)
+            st.write("R Squared: ", r_squared)
 
-            st.write(y_test)
-            st.write(y_test_prediction_ARIMA)
+            fig = animate_data(X_test, y_test, y_test_prediction_ARIMA)
+            st.plotly_chart(fig)
 
-            # y_train_prediction_SARIMA =
 
-            # st.write("SARIMA")
-            # stepwise_fit_SARIMA = pm.auto_arima(uploaded_dataset[units_sold_column],
-            #                              start_p=1, start_q=1,
-            #                              max_p=3, max_q=3,
-            #                              seasonal=True, m=365,
-            #                              start_P=0, start_Q=0,
-            #                              max_P=2, max_Q=2,
-            #                              d=None, D=None, trace=True,
-            #                              error_action='ignore',  # don't want to know if an order does not work
-            #                              suppress_warnings=True,  # don't want convergence warnings
-            #                              stepwise=True)  # set to stepwise
+
+            st.write("SARIMA")
+
+            if 'confirmation_seasonality_button_clicked' not in st.session_state:
+                st.session_state["confirmation_seasonality_button_clicked"] = False
+
+            seasonality_frequency = [7,12,365,4]
+            if 'selected_seasonality' not in st.session_state:
+                st.session_state.selected_seasonality = 0
+            selected_seasonality = st.session_state.selected_seasonality
+            seasonality = st.radio(label="Enter the region where your store is based?", options=seasonality_frequency,
+                              index=st.session_state.selected_seasonality, disabled=st.session_state.confirmation_seasonality_button_clicked)
+            st.session_state["seasonality"] = seasonality
+            st.session_state.selected_seasonality = seasonality_frequency.index(seasonality)
+            st.markdown(f"You Selected {st.session_state.seasonality}.")
+
+
+            # confirmation_seasonality_button_clicked = st.button("Confirm Selected Options")
+            # if confirmation_seasonality_button_clicked:
+            #     st.session_state.confirmation_seasonality_button_clicked = True
             #
-            # st.write(stepwise_fit_SARIMA.summary())
+            #     stepwise_fit_SARIMA = pm.auto_arima(uploaded_dataset[units_sold_column],
+            #                                  seasonal=True, m=st.session_state.seasonality,
+            #                                  trace=True,
+            #                                  error_action='ignore',  # don't want to know if an order does not work
+            #                                  suppress_warnings=True,  # don't want convergence warnings
+            #                                  stepwise=True)  # set to stepwise
+            #
+            #     st.write(stepwise_fit_SARIMA.summary())
+            #
+            #     y_test_prediction_SARIMA = stepwise_fit_SARIMA.predict(len(X_test))
+            #
+            #     mean_absolute_error = mean_absolute_error(y_test, y_test_prediction_SARIMA)
+            #     st.write("Mean Absolute Error: ", mean_absolute_error)
+            #
+            #     root_mean_squared_error = root_mean_squared_error(y_test, y_test_prediction_SARIMA)
+            #     st.write("Root Mean Squared Error: ", root_mean_squared_error)
+            #
+            #     r_squared = r2_score(y_test, y_test_prediction_SARIMA)
+            #     st.write("R Squared: ", r_squared)
+            #
+            #     fig = animate_data(X_test, y_test, y_test_prediction_SARIMA)
+            #     st.plotly_chart(fig)
+
+                # ARIMAX, SARIMAX
+
+                # LSTM - not for now
+
 
         else:
             st.write("The data is non-stationary, so we need to apply differencing until the data becomes stationary.")
