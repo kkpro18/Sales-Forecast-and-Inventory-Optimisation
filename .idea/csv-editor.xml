@@ -3,6 +3,34 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
+        <entry key="/App/data/kaggle.com:datasets:rajatsurana979:fast-food-sales-report/Balaji Fast Food Sales.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/data/kaggle.com:datasets:shreyanshverma27:online-sales-dataset-popular-marketplace-data/Online Sales Data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/data/kaggle.com:datasets:tanayatipre:store-sales-forecasting-dataset/stores_sales_forecasting.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/Experiments/1_datasets/kaggle.com:datasets:shreyanshverma27:online-sales-dataset-popular-marketplace-data/Online Sales Data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/Experiments/1_datasets/kaggle.com:datasets:tanayatipre:store-sales-forecasting-dataset/stores_sales_forecasting.csv">
           <value>
             <Attribute>
