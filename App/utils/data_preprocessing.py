@@ -7,18 +7,17 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 
 
-def format_dates(data, column_map):
-    date_column = column_map["date_column"]
+def format_dates(data, column_mapping):
+    date_column = column_mapping["date_column"]
     data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
-    data[date_column] = data[date_column].fillna(method='ffill')
-
+    data[date_column] = data[date_column].ffill()
     st.success("Dates have been successfully formatted!")
     return data
 
-def handle_outliers(data, column_map):
+def handle_outliers(data, column_mapping):
     outlier_indices = []
-    quantity_sold_column = column_map["quantity_sold_column"]
-    product_column = column_map["product_column"]
+    quantity_sold_column = column_mapping["quantity_sold_column"]
+    product_column = column_mapping["product_column"]
     # consider pricing as possibly typos
 
     if (data[quantity_sold_column] < 0).sum() > 0:
@@ -26,15 +25,14 @@ def handle_outliers(data, column_map):
         data = data[data[quantity_sold_column] >= 0].copy()
 
     for product, product_group in data.groupby(product_column):
-        Q1 = product_group[quantity_sold_column].quantile(0.25)
-        Q3 = product_group[quantity_sold_column].quantile(0.75)
-        IQR = Q3 - Q1
+        quartile_1 = product_group[quantity_sold_column].quantile(0.25)
+        quartile_3 = product_group[quantity_sold_column].quantile(0.75)
+        inter_quartile_range = quartile_3 - quartile_1
         threshold = 1.5
-        iqr_outlier_indices = product_group[(product_group[quantity_sold_column] < Q1 - threshold * IQR)
+        iqr_outlier_indices = product_group[(product_group[quantity_sold_column] < quartile_1 - threshold * inter_quartile_range)
                                             |
-                                            (product_group[quantity_sold_column] > Q3 + threshold * IQR)].index
-        z_scores = np.abs(
-            zscore(product_group[quantity_sold_column], nan_policy="omit"))  # try Median Absolute Deviation (MAD)
+                                            (product_group[quantity_sold_column] > quartile_3 + threshold * inter_quartile_range)].index
+        z_scores = np.abs(zscore(product_group[quantity_sold_column], nan_policy="omit"))  # try Median Absolute Deviation (MAD)
         z_score_outlier_indices = product_group[abs(z_scores) > 1.5].index  # test different thresholds
 
         outlier_indices.extend(iqr_outlier_indices)
@@ -50,11 +48,7 @@ def handle_outliers(data, column_map):
 
     if outlier_proportion > 10:  # greater than 10% of dataset
         data.loc[outlier_indices, quantity_sold_column] = np.nan
-        impute = SimpleImputer(strategy='mean')
-
-        data[quantity_sold_column] = data.groupby(product_column)[quantity_sold_column].transform(
-            lambda x: round(x.fillna(x.mean()))
-        )
+        data[quantity_sold_column] = data.groupby(product_column)[quantity_sold_column].transform(lambda x: round(x.fillna(x.mean())))
         st.success(f"{outlier_values.shape[0]} outliers have been processed")
     else:
         data = data.drop(outlier_indices)  # indexing may be a categorical or dates, so this would be an index safe method
@@ -62,10 +56,10 @@ def handle_outliers(data, column_map):
 
     return data
 
-def handle_missing_values(data, column_map):
-    quantity_sold_column = column_map["quantity_sold_column"]
-    product_column = column_map["product_column"]
-    price_column = column_map["price_column"]
+def handle_missing_values(data, column_mapping):
+    quantity_sold_column = column_mapping["quantity_sold_column"]
+    product_column = column_mapping["product_column"]
+    price_column = column_mapping["price_column"]
 
     if data.isnull().values.any():
         # rows_with_missing_values = data[data.isnull().any(axis=1)]
@@ -89,15 +83,16 @@ def handle_missing_values(data, column_map):
 
         if data.isnull().values.any():
             st.warning("Missing Values Still Exists :/")
+            st.dataframe(data[data.isnull().any(axis=1)])
         else:
             st.success("Missing Values Processed and Cleaned")
     else:
         st.success("Data contains no missing or null values")
     return data
 
-def encode_product_column(data, column_map):
-    product_column = column_map["product_column"]
-    quantity_sold_column = column_map["quantity_sold_column"]
+def encode_product_column(data, column_mapping):
+    product_column = column_mapping["product_column"]
+    quantity_sold_column = column_mapping["quantity_sold_column"]
 
     target_encoder = TargetEncoder(cols=product_column)
     data["product_encoded"] = target_encoder.fit_transform(data[product_column], data[quantity_sold_column])

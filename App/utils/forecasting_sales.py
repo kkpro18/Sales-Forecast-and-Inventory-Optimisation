@@ -1,13 +1,14 @@
 import time
+import streamlit as st
 from sklearn.metrics import root_mean_squared_error, r2_score
-from sktime.performance_metrics.forecasting import *
-from App.utils.session_manager import *
+from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
+from App.utils.session_manager import SessionManager
 import pmdarima as pm
 import plotly.graph_objects as go
 
-def split_training_testing_data(data, column_map):
-    features = column_map.copy().pop("quantity_sold_column")
-    target = column_map["quantity_sold_column"]
+def split_training_testing_data(data, column_mapping):
+    features = column_mapping.copy().pop("quantity_sold_column")
+    target = column_mapping["quantity_sold_column"]
     # 70 : 30 split
     train_size = int(len(data) * 0.70)
 
@@ -33,7 +34,6 @@ def print_performance_metrics(model, y_train, y_train_prediction, y_test, y_test
         st.metric(label=metric, value=round(value, 4))
     # print(performance_metrics)
 
-
 def get_seasonality():
     seasonality_frequency = [7, 12, 365, 4]
     selected_seasonality = st.radio(label="Enter the region where your store is based?", options=seasonality_frequency)
@@ -43,7 +43,6 @@ def get_seasonality():
     time.sleep(4)
 
     return SessionManager.get_state(selected_seasonality)
-
 
 def fit_arima_model(y_train):
     st.write("ARIMA")
@@ -57,7 +56,6 @@ def fit_arima_model(y_train):
 
     # st.write(arima_model.summary())
     return arima_model
-
 
 def fit_sarima_model(y_train, seasonality):
     sarima_model = pm.auto_arima(y_train,
@@ -75,7 +73,6 @@ def fit_sarima_model(y_train, seasonality):
 
 def fit_sarimax_model():
     pass
-
 
 def fit_lstm_model():
     pass

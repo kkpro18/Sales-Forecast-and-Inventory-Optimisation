@@ -1,6 +1,9 @@
 import streamlit as st
 
-# to run application type this into the terminal " streamlit run App/0_home.py "
+from utils.session_manager import SessionManager
+
+# run app by "python -m streamlit run App/0_Home.py"
+
 st.set_page_config(
     page_title="Sales Forecasting App",
     page_icon="🏠",
@@ -27,5 +30,11 @@ st.markdown(
     5. Share Feedback 💬
     """
 )
+if not SessionManager.is_there("preprocess_data_complete"):
+    SessionManager.set_state("preprocess_data_complete", False)
 
-st.page_link("pages/4_Forecast_Sales.py", label="👈 First Upload Sales Data", icon="📈")
+st.write("Full Session State Variables: ")
+st.write(st.session_state)
+
+st.page_link("pages/1_Upload_Data.py", label="👈 First Upload Sales Data", icon="📁")
+

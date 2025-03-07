@@ -31,6 +31,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/Experiments/1_datasets/archive.ics.uci.edu--online+retail+ii/online_retail_II_2009_2010.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/Experiments/1_datasets/kaggle.com:datasets:rajatsurana979:fast-food-sales-report/Balaji Fast Food Sales.csv">
           <value>
             <Attribute>

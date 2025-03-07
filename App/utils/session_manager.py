@@ -9,9 +9,15 @@ class SessionManager:
     @staticmethod
     def get_state(key):
         # retrieves the value of the variable
-        return st.session_state.get(key)
+        return st.session_state[key]
 
     @staticmethod
-    def clear_states(self):
+    def clear_states():
         st.session_state.clear()
-    
+
+    @staticmethod
+    def is_there(key):
+        if key in st.session_state:
+            return True
+        else:
+            return False

@@ -11,20 +11,20 @@ st.markdown("# Forecast Sales")
 st.write("""Let's Begin Forecasting Sales!""")
 
 data = SessionManager.get_state("data")
-column_map = SessionManager.get_state("column_map")
+column_mapping = SessionManager.get_state("column_mapping")
 preprocess_data_complete = SessionManager.get_state("preprocess_data_complete")
 
-if data is None or column_map is None:
+if data is None or column_mapping is None:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
     st.page_link("pages/1_Upload_Data.py", label="👈 Upload The Dataset", icon="📁")
 elif not preprocess_data_complete:
     st.warning("Dataset has not been pre-processed, 👈 Please Preprocess it ")
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
-    data = data[column_map.date_column]
+    data = data[column_mapping.date_column]
 
     if st.button("Begin Forecasting Sales"):
-        X_train, X_test, y_train, y_test = split_training_testing_data(data, column_map)
+        X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping)
 
         st.write("ARIMA")
         arima_model = fit_arima_model(y_train)
