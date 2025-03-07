@@ -114,24 +114,24 @@ if 'uploaded_dataset' in st.session_state:
             fig = animate_data(X_test, y_test, y_test_prediction_ARIMA)
             st.plotly_chart(fig)
 
-            # seasonality_frequency = [7, 12, 365, 4]
-            # if 'selected_seasonality' not in st.session_state:
-            #     st.session_state.selected_seasonality = 0
-            # selected_seasonality = st.session_state.selected_seasonality
-            # seasonality = st.radio(label="Enter the region where your store is based?", options=seasonality_frequency,
-            #                        index=st.session_state.selected_seasonality)
-            # st.session_state["seasonality"] = seasonality
-            # st.session_state.selected_seasonality = seasonality_frequency.index(seasonality)
-            # st.markdown(f"You Selected {st.session_state.seasonality}.")
-            # time.sleep(5)
-            # stepwise_fit_SARIMA = pm.auto_arima(y_train,
-            #                                     seasonal=True, m=365,
-            #                                     trace=True,
-            #                                     error_action='ignore',  # don't want to know if an order does not work
-            #                                     suppress_warnings=True,  # don't want convergence warnings
-            #                                     stepwise=True)  # set to stepwise
-            #
-            # st.write(stepwise_fit_SARIMA.summary())
+            seasonality_frequency = [7, 12, 365, 4]
+            if 'selected_seasonality' not in st.session_state:
+                st.session_state.selected_seasonality = 0
+            selected_seasonality = st.session_state.selected_seasonality
+            seasonality = st.radio(label="Enter the region where your store is based?", options=seasonality_frequency,
+                                   index=st.session_state.selected_seasonality)
+            st.session_state["seasonality"] = seasonality
+            st.session_state.selected_seasonality = seasonality_frequency.index(seasonality)
+            st.markdown(f"You Selected {st.session_state.seasonality}.")
+            time.sleep(5)
+            stepwise_fit_SARIMA = pm.auto_arima(y_train,
+                                                seasonal=True, m=365,
+                                                trace=True,
+                                                error_action='ignore',  # don't want to know if an order does not work
+                                                suppress_warnings=True,  # don't want convergence warnings
+                                                stepwise=True)  # set to stepwise
+
+            st.write(stepwise_fit_SARIMA.summary())
 
         else:
             st.write("The data is non-stationary, so we need to apply differencing until the data becomes stationary.")

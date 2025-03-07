@@ -31,7 +31,6 @@ def visualise_storewide_sales(data, column_map):
             yaxis_title=quantity_sold_column, )
     st.plotly_chart(store_overall_sales_figure)
 
-
 def visualise_individual_product_sales(data, column_map):
     date_column = column_map["date_column"]
     product_column = column_map["product_column"]

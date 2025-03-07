@@ -1,6 +1,6 @@
 import streamlit as st
-
 from App.utils.session_manager import SessionManager
+from App.utils.forecasting_sales import split_training_testing_data, fit_arima_model, print_performance_metrics, get_seasonality, fit_sarima_model
 
 st.set_page_config(
     page_title="Forecast Sales",
@@ -16,10 +16,10 @@ preprocess_data_complete = SessionManager.get_state("preprocess_data_complete")
 
 if data is None or column_map is None:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
-    st.page_link("pages/upload_data.py", label="👈 Upload The Dataset", icon="📁")
+    st.page_link("pages/1_Upload_Data.py", label="👈 Upload The Dataset", icon="📁")
 elif not preprocess_data_complete:
     st.warning("Dataset has not been pre-processed, 👈 Please Preprocess it ")
-    st.page_link("pages/preprocess_data.py", label="👈 Pre-process The Dataset", icon="📁")
+    st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
     data = data[column_map.date_column]
 
@@ -41,5 +41,5 @@ else:
         y_test_prediction_sarima = sarima_model.predict(len(X_test))
         print_performance_metrics(y_test_prediction_sarima, y_test)
 
-        st.page_link("pages/inventory_policy_simulator.py", label="👈 Next Stage: Simulate your inventory policy",
+        st.page_link("pages/5_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy",
                      icon="⚙️")

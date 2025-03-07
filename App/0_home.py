@@ -1,7 +1,6 @@
 import streamlit as st
-from components.sidebar import show_sidebar
 
-# to run application type this into the terminal " streamlit run Experiments/5_application_draft/App/0_Home.py "
+# to run application type this into the terminal " streamlit run App/0_home.py "
 st.set_page_config(
     page_title="Sales Forecasting App",
     page_icon="🏠",
@@ -20,10 +19,13 @@ st.markdown(
     - Simulate Inventory Policies
 
     How to use this Application? (👈 Use the Sidebar to navigate this application)
-    1. Upload a dataset 📁| CSV Format | Expected Columns: Invoice Date, Product ID, Unit Price, # Sold
-    2. Preprocess and Visualise Data 🔎
+    1. Upload a dataset 📁| CSV / XLSX Format | Required Data Columns : Invoice Date, Product ID, Unit Price, # Sold
+    2. Preprocess Data 🧼
+    3. Visualise Data 🔎
     3. Forecast Sales 📈
     4. Inventory Policy Simulator ⚙️
     5. Share Feedback 💬
     """
 )
+
+st.page_link("pages/4_Forecast_Sales.py", label="👈 First Upload Sales Data", icon="📈")

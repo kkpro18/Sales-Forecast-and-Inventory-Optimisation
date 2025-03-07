@@ -4,7 +4,7 @@ from App.utils.data_preprocessing import *
 
 st.set_page_config(
     page_title="Preprocess Data",
-    page_icon="🔎",
+    page_icon="🧼",
     layout="wide",
 )
 st.markdown("# Preprocess Your Sales Data")
@@ -16,7 +16,7 @@ column_map = SessionManager.get_state("column_map")
 
 if data is None or column_map is None:
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
-    st.page_link("pages/upload_data.py", label="👈 Upload The Dataset", icon="📁")
+    st.page_link("pages/1_Upload_Data.py", label="👈 Upload The Dataset", icon="📁")
 else:
     st.write("Processing Dates in the Correct Format")
     data = format_dates(data, column_map)
