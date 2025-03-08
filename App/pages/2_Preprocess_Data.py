@@ -23,11 +23,11 @@ else:
     st.write("Processing Dates in the Correct Format")
     data = format_dates(data, column_mapping)
 
-    st.write("Handling Outliers")
-    data = handle_outliers(data, column_mapping)
-
     st.write("Handling Missing Values ")
     data = handle_missing_values(data, column_mapping)
+
+    st.write("Handling Outliers")
+    data = handle_outliers(data, column_mapping)
 
     st.write("Numerically Encoding Product ID (Unique Identifier)")
     data = encode_product_column(data, column_mapping)

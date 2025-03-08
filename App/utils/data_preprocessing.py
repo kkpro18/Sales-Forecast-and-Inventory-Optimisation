@@ -12,6 +12,13 @@ def format_dates(data, column_mapping):
     st.toast(f"{len(data[date_column])} dates loaded")
     data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
     data[date_column] = data[date_column].ffill()
+    if data[date_column].isna().sum() > 0:
+        st.warning("Missing values in the date column after processing")
+    # # Set the date column as the index
+    # data.index = data[date_column]
+    # data = data.drop(columns=[date_column], axis=1)
+    # data = data.sort_index()
+
     st.success("Dates have been successfully formatted!")
     return data
 

@@ -9,10 +9,9 @@ import plotly.graph_objects as go
 def split_training_testing_data(data, column_mapping):
     # st.write(column_mapping)
     features = column_mapping.copy()
-    features.pop("quantity_sold_column")
-    features = features.values()
-
+    features = features.pop("date_column")
     target = column_mapping["quantity_sold_column"]
+
     # 70 : 30 split
     train_size = int(len(data) * 0.70)
 
@@ -40,12 +39,12 @@ def print_performance_metrics(model, y_train, y_train_prediction, y_test, y_test
     # print(performance_metrics)
 
 def get_seasonality():
-    seasonality_frequency = [7, 12, 365, 4]
-    selected_seasonality = st.radio(label="Enter the region where your store is based?", options=seasonality_frequency)
+    seasonality_frequency = [7, 12, 365]
+
+    selected_seasonality = st.radio(label="Select the seasonality that applies to your store (7 - Weekly,  12 - Monthly, 365 - Yearly)", options=seasonality_frequency)
     SessionManager.set_state("selected_seasonality", selected_seasonality)
 
     st.markdown(f"You Selected {SessionManager.get_state(selected_seasonality)}.")
-    time.sleep(4)
 
     return SessionManager.get_state(selected_seasonality)
 
@@ -57,7 +56,7 @@ def fit_arima_model(y_train):
                                 error_action='ignore',  # don't need to know if an order does not work
                                 suppress_warnings=False,  # don't want convergence warnings
                                 stepwise=True,  # set to stepwise which is quicker,
-                                n_jobs=-1)  # n_jobs uses all processor cores for faster build
+    )
 
     # st.write(arima_model.summary())
     return arima_model
@@ -69,7 +68,7 @@ def fit_sarima_model(y_train, seasonality):
                                  error_action='ignore',  # don't want to know if an order does not work
                                  suppress_warnings=True,  # don't want convergence warnings
                                  stepwise=True,  # set to stepwise for quicker - false does grid search takes longer
-                                 n_jobs=-1)  # uses all cpu cores
+    )  # uses all cpu cores
 
     # st.write(sarima_model.summary())
     return sarima_model

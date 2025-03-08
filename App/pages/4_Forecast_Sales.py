@@ -16,14 +16,17 @@ if not SessionManager.is_there("data") or not SessionManager.is_there("column_ma
 elif not SessionManager.get_state("preprocess_data_complete"):
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
-    data = SessionManager.get_state("data")
+    data = SessionManager.get_state("data").head(int(len(SessionManager.get_state("data"))))
     column_mapping = SessionManager.get_state("column_mapping")
-
-    data = data[column_mapping.values()]
 
     if st.button("Begin Forecasting Sales"):
         X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping)
-
+        st.write("""### Training Data""")
+        st.dataframe(X_train)
+        st.dataframe(y_train)
+        st.write("""### Testing Data""")
+        st.dataframe(X_test)
+        st.dataframe(y_test)
         arima_model = fit_arima_model(y_train)
         st.write(arima_model.summary())
         y_train_prediction_ARIMA = arima_model.predict(len(X_train)-1)
