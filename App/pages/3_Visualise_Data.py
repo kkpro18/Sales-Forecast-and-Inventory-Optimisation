@@ -11,17 +11,16 @@ st.markdown("# Visualise Your Sales Data")
 st.write(
     """Here you can see the data visually!""")
 
-data = SessionManager.get_state("data")
-column_mapping = SessionManager.get_state("column_mapping")
-preprocess_data_complete = SessionManager.get_state("preprocess_data_complete")
 
-if data is None or column_mapping is None:
+if not SessionManager.is_there("data") or not SessionManager.is_there("column_mapping"):
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
     st.page_link("pages/1_Upload_Data.py", label="👈 Upload The Dataset", icon="📁")
-elif not preprocess_data_complete:
-    st.warning("Dataset has not been pre-processed, 👈 Please Preprocess it ")
+elif not SessionManager.get_state("preprocess_data_complete"):
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
+
+    data = SessionManager.get_state("data")
+    column_mapping = SessionManager.get_state("column_mapping")
     st.header("View Sales Across the Store: ")
     visualise_storewide_sales(data, column_mapping)
 

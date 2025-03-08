@@ -16,7 +16,7 @@ st.write(
 if not SessionManager.is_there("data") or not SessionManager.is_there("column_mapping"):
     st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
     st.page_link("pages/1_Upload_Data.py", label="👈 Upload The Dataset", icon="📁")
-elif SessionManager.is_there("data") or SessionManager.is_there("column_mapping"):
+else:
     data = SessionManager.get_state("data")
     column_mapping = SessionManager.get_state("column_mapping")
 
