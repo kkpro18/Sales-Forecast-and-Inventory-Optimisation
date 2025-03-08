@@ -1,3 +1,4 @@
+import time
 import streamlit as st
 from App.utils.session_manager import SessionManager
 from App.utils.data_preprocessing import format_dates, handle_outliers, encode_product_column, handle_missing_values
@@ -32,7 +33,17 @@ elif SessionManager.is_there("data") or SessionManager.is_there("column_mapping"
     data = encode_product_column(data, column_mapping)
 
     SessionManager.set_state("preprocess_data_complete", True)
-    
+
     st.subheader("Preprocessed Data: ")
     st.dataframe(data)
+    st.balloons()
+
+    preprocessed_data_csv = data.to_csv(index=False)
+    st.download_button(
+        label="Download the Preprocessed Data as a CSV File",
+        data=preprocessed_data_csv,
+        file_name="preprocessed_data.csv",
+    )
+    time.sleep(1)
+    st.switch_page("pages/3_Visualise_Data.py")
 

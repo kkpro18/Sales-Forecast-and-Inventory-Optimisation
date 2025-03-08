@@ -7,9 +7,9 @@ st.set_page_config(
     page_icon="🔎",
     layout="wide",
 )
-st.markdown("# Preprocess Your Sales Data")
+st.markdown("# Visualise Your Sales Data")
 st.write(
-    """Here you can Clean (pre-process) the data!""")
+    """Here you can see the data visually!""")
 
 data = SessionManager.get_state("data")
 column_mapping = SessionManager.get_state("column_mapping")
@@ -22,12 +22,12 @@ elif not preprocess_data_complete:
     st.warning("Dataset has not been pre-processed, 👈 Please Preprocess it ")
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
-    if st.button("View Store-Wide Sales"):
-        visualise_storewide_sales(data, column_mapping)
-    if st.button("View Each Product Sales"):
-        if not SessionManager.is_there("product_index"):
-            SessionManager.set_state("product_index", 0)
-        visualise_individual_product_sales(data, column_mapping)
+    st.header("View Sales Across the Store: ")
+    visualise_storewide_sales(data, column_mapping)
+
+    st.header("View Each Product Sales: ")
+    visualise_individual_product_sales(data, column_mapping)
+
 
     st.page_link("pages/4_Forecast_Sales.py", label="👈 Next Stage: Forecast Sales", icon="📈")
 

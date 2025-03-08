@@ -21,19 +21,17 @@ elif not preprocess_data_complete:
     st.warning("Dataset has not been pre-processed, 👈 Please Preprocess it ")
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
-    data = data[column_mapping.date_column]
+    data = data[column_mapping.values()]
 
     if st.button("Begin Forecasting Sales"):
         X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping)
 
-        st.write("ARIMA")
         arima_model = fit_arima_model(y_train)
         st.write(arima_model.summary())
         y_train_prediction_ARIMA = arima_model.predict(len(X_train)-1)
         y_test_prediction_ARIMA = arima_model.predict(len(X_test))
         print_performance_metrics(y_test_prediction_ARIMA, y_test)
 
-        st.write("SARIMA")
         sales_seasonality = get_seasonality()
         sarima_model = fit_sarima_model(y_train, seasonality = sales_seasonality)
         st.write(sarima_model.summary())

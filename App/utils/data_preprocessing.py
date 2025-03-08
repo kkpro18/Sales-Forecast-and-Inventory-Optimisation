@@ -9,6 +9,7 @@ from sklearn.impute import SimpleImputer
 
 def format_dates(data, column_mapping):
     date_column = column_mapping["date_column"]
+    st.toast(f"{len(data[date_column])} dates loaded")
     data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
     data[date_column] = data[date_column].ffill()
     st.success("Dates have been successfully formatted!")

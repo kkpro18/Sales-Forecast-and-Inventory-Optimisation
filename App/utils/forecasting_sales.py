@@ -7,7 +7,11 @@ import pmdarima as pm
 import plotly.graph_objects as go
 
 def split_training_testing_data(data, column_mapping):
-    features = column_mapping.copy().pop("quantity_sold_column")
+    # st.write(column_mapping)
+    features = column_mapping.copy()
+    features.pop("quantity_sold_column")
+    features = features.values()
+
     target = column_mapping["quantity_sold_column"]
     # 70 : 30 split
     train_size = int(len(data) * 0.70)
@@ -15,8 +19,9 @@ def split_training_testing_data(data, column_mapping):
     train = data[:train_size]
     test = data[train_size:]
 
-    X_train, X_test = train[features.values()], test[features.values()]
+    X_train, X_test = train[features], test[features]
     y_train, y_test = train[target], test[target]
+    st.toast("Data has been split into training and test set 70:30 Ratio")
 
     return X_train, X_test, y_train, y_test
 def print_performance_metrics(model, y_train, y_train_prediction, y_test, y_test_prediction):
