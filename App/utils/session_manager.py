@@ -1,4 +1,6 @@
 import streamlit as st
+import requests
+
 
 class SessionManager:
     @staticmethod
@@ -21,3 +23,9 @@ class SessionManager:
             return True
         else:
             return False
+
+    @staticmethod
+    def flask_api_call(endpoint, data, column_mapping):
+        url = f'http://127.0.0.1:5000/{endpoint}'
+        response = requests.post(url, json={"data": data, "column_mapping": column_mapping})
+        return response.json()

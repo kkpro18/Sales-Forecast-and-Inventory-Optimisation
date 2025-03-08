@@ -1,7 +1,10 @@
 import time
+
+import pandas as pd
 import streamlit as st
 from App.utils.session_manager import SessionManager
 from App.utils.data_preprocessing import format_dates, handle_outliers, encode_product_column, handle_missing_values
+from utils.session_manager import SessionManager
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -21,20 +24,22 @@ else:
     column_mapping = SessionManager.get_state("column_mapping")
 
     st.write("Processing Dates in the Correct Format")
-    data = format_dates(data, column_mapping)
+    data = data.to_dict(orient="records")
+    data = SessionManager.flask_api_call("format_dates_call", data, column_mapping)
 
     st.write("Handling Missing Values ")
-    data = handle_missing_values(data, column_mapping)
+    data = SessionManager.flask_api_call("handle_missing_values_call", data["processed_data"], column_mapping)
 
     st.write("Handling Outliers")
-    data = handle_outliers(data, column_mapping)
+    data = SessionManager.flask_api_call("handle_outliers_call", data["processed_data"], column_mapping)
 
     st.write("Numerically Encoding Product ID (Unique Identifier)")
-    data = encode_product_column(data, column_mapping)
+    data = SessionManager.flask_api_call("encode_product_column_call", data["processed_data"], column_mapping)
 
     SessionManager.set_state("preprocess_data_complete", True)
 
     st.subheader("Preprocessed Data: ")
+    data = pd.DataFrame(data)
     st.dataframe(data)
     st.balloons()
 

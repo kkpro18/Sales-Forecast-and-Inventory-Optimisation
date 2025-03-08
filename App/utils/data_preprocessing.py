@@ -6,7 +6,6 @@ from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 
-
 def format_dates(data, column_mapping):
     date_column = column_mapping["date_column"]
     st.toast(f"{len(data[date_column])} dates loaded")
