@@ -1,6 +1,9 @@
+import json
+
+import joblib
 import streamlit as st
 from App.utils.session_manager import SessionManager
-from App.utils.forecasting_sales import split_training_testing_data, fit_arima_model, print_performance_metrics, get_seasonality, fit_sarima_model
+from App.utils.forecasting_sales import split_training_testing_data, print_performance_metrics, get_seasonality
 
 st.set_page_config(
     page_title="Forecast Sales",
@@ -21,23 +24,48 @@ else:
 
     if st.button("Begin Forecasting Sales"):
         X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping)
+
         st.write("""### Training Data""")
         st.dataframe(X_train)
         st.dataframe(y_train)
         st.write("""### Testing Data""")
         st.dataframe(X_test)
         st.dataframe(y_test)
-        arima_model = fit_arima_model(y_train)
-        st.write(arima_model.summary())
-        y_train_prediction_ARIMA = arima_model.predict(len(X_train)-1)
-        y_test_prediction_ARIMA = arima_model.predict(len(X_test))
-        print_performance_metrics(y_test_prediction_ARIMA, y_test)
+
+        json_response = SessionManager.flask_api_call("fit_and_store_arima_model_call",
+                                                      y_train = y_train.to_dict())
+        if json_response.status_code == 200:
+            st.write(joblib.load('arima.pkl').summary())
+        else:
+            st.error(json_response.text)
+
+        json_response = SessionManager.flask_api_call("predict_train_test",
+                                                      train_forecast_steps = len(X_train) - 1,
+                                                      test_forecast_steps = len(X_test),
+                                                      model_name = 'arima')
+
+        if json_response.status_code == 200:
+            y_train_prediction_arima = json_response.json()["y_train_prediction"]
+            y_test_prediction_arima = json_response.json()["y_train_prediction"]
+        else:
+            st.error(json_response.text)
+        print_performance_metrics(y_train_prediction_arima, y_train)
+        print_performance_metrics(y_test_prediction_arima, y_test)
+
+
 
         sales_seasonality = get_seasonality()
-        sarima_model = fit_sarima_model(y_train, seasonality = sales_seasonality)
-        st.write(sarima_model.summary())
-        y_train_prediction_sarima = sarima_model.predict(len(X_train) - 1)
-        y_test_prediction_sarima = sarima_model.predict(len(X_test))
+        SessionManager.flask_api_call("fit_and_store_sarima_model_call",
+                                      y_train = y_train.to_dict(),
+                                      seasonality = sales_seasonality)
+        st.write(joblib.load('sarima.pkl').summary())
+        json_response = SessionManager.flask_api_call("predict_train_test",
+                                                      train_forecast_steps=len(X_train) - 1,
+                                                      test_forecast_steps=len(X_test),
+                                                      model_name='sarima')
+        y_train_prediction_sarima = json_response.json()["y_train_prediction"]
+        y_test_prediction_sarima = json_response.json()["y_test_prediction"]
+        print_performance_metrics(y_train_prediction_sarima, y_train)
         print_performance_metrics(y_test_prediction_sarima, y_test)
 
         st.page_link("pages/5_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy",

@@ -9,7 +9,8 @@ from sklearn.impute import SimpleImputer
 def format_dates(data, column_mapping):
     date_column = column_mapping["date_column"]
     st.toast(f"{len(data[date_column])} dates loaded")
-    data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
+    data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
+    data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)
     data[date_column] = data[date_column].ffill()
     if data[date_column].isna().sum() > 0:
         st.warning("Missing values in the date column after processing")

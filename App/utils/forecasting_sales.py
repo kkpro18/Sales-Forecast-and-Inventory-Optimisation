@@ -1,8 +1,7 @@
-import time
+import joblib
 import streamlit as st
 from sklearn.metrics import root_mean_squared_error, r2_score
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
-from App.utils.session_manager import SessionManager
 import pmdarima as pm
 import plotly.graph_objects as go
 
@@ -42,11 +41,15 @@ def get_seasonality():
     seasonality_frequency = [7, 12, 365]
 
     selected_seasonality = st.radio(label="Select the seasonality that applies to your store (7 - Weekly,  12 - Monthly, 365 - Yearly)", options=seasonality_frequency)
-    SessionManager.set_state("selected_seasonality", selected_seasonality)
+    # SessionManager.set_state("selected_seasonality", selected_seasonality)
 
-    st.markdown(f"You Selected {SessionManager.get_state(selected_seasonality)}.")
+    # st.markdown(f"You Selected {SessionManager.get_state(selected_seasonality)}.")
+    #
+    # return SessionManager.get_state(selected_seasonality)
+    st.markdown(f"You Selected {selected_seasonality}.")
 
-    return SessionManager.get_state(selected_seasonality)
+    return selected_seasonality
+
 
 def fit_arima_model(y_train):
     st.write("ARIMA")
@@ -83,6 +86,11 @@ def fit_lstm_model():
 
 def fit_fb_prophet_model():
     pass
+
+
+def predict(forecast_periods, model_name):
+    predictions = joblib.load(f'models/{model_name}.pkl').predict(n_periods=forecast_periods)
+    return predictions
 
 def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction):
     fig = go.Figure()

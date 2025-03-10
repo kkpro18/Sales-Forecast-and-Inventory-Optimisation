@@ -1,10 +1,9 @@
 import time
 
-import pandas as pd
+import requests
 import streamlit as st
 from App.utils.session_manager import SessionManager
-from App.utils.data_preprocessing import format_dates, handle_outliers, encode_product_column, handle_missing_values
-from utils.session_manager import SessionManager
+import pandas as pd
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -24,23 +23,45 @@ else:
     column_mapping = SessionManager.get_state("column_mapping")
 
     st.write("Processing Dates in the Correct Format")
-    data = data.to_dict(orient="records")
-    data = SessionManager.flask_api_call("format_dates_call", data, column_mapping)
+    data_as_dictionary = data.to_dict(orient='records')
+
+
+    json_response = SessionManager.flask_api_call("format_dates_call", data = data_as_dictionary, column_mapping = column_mapping)
+    if json_response.status_code == 200:
+        st.success("Successfully Formatted Dates")
+    else:
+        st.error(json_response.text)
 
     st.write("Handling Missing Values ")
-    data = SessionManager.flask_api_call("handle_missing_values_call", data["processed_data"], column_mapping)
+    json_response = SessionManager.flask_api_call("handle_missing_values_call", data = json_response.json(), column_mapping = column_mapping)
+    if json_response.status_code == 200:
+        st.success("Successfully Handled Missing Values")
+    else:
+        st.error(json_response.text)
 
     st.write("Handling Outliers")
-    data = SessionManager.flask_api_call("handle_outliers_call", data["processed_data"], column_mapping)
+    json_response = SessionManager.flask_api_call("handle_outliers_call", data = json_response.json(), column_mapping = column_mapping)
+    if json_response.status_code == 200:
+        st.success("Successfully Handled Outliers")
+    else:
+        st.error(json_response.text)
 
     st.write("Numerically Encoding Product ID (Unique Identifier)")
-    data = SessionManager.flask_api_call("encode_product_column_call", data["processed_data"], column_mapping)
+    json_response = SessionManager.flask_api_call("encode_product_column_call", data = json_response.json(), column_mapping = column_mapping)
+    if json_response.status_code == 200:
+        st.success("Successfully Encoded Product ID")
+    else:
+        st.error(json_response.text)
+
+    data = pd.DataFrame(json_response.json())
+    data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
+    data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)
 
     SessionManager.set_state("preprocess_data_complete", True)
+    SessionManager.set_state("data", data)
 
     st.subheader("Preprocessed Data: ")
-    data = pd.DataFrame(data)
-    st.dataframe(data)
+    st.dataframe(SessionManager.get_state("data"))
     st.balloons()
 
     preprocessed_data_csv = data.to_csv(index=False)
@@ -49,6 +70,6 @@ else:
         data=preprocessed_data_csv,
         file_name="preprocessed_data.csv",
     )
-    time.sleep(1)
-    st.switch_page("pages/3_Visualise_Data.py")
+    time.sleep(3)
+    # st.switch_page("pages/3_Visualise_Data.py")
 

@@ -25,7 +25,8 @@ class SessionManager:
             return False
 
     @staticmethod
-    def flask_api_call(endpoint, data, column_mapping):
+    def flask_api_call(endpoint, **kwargs):
         url = f'http://127.0.0.1:5000/{endpoint}'
-        response = requests.post(url, json={"data": data, "column_mapping": column_mapping})
-        return response.json()
+        response = requests.post(url,
+                                 json = kwargs)
+        return response
