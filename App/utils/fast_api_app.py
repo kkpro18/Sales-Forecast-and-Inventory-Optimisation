@@ -1,6 +1,5 @@
 import datetime
-from typing import Dict, List, Any
-
+from typing import Optional, Dict, List, Any
 import joblib
 import pandas as pd
 from fastapi import FastAPI, HTTPException
@@ -8,22 +7,23 @@ import uvicorn
 from pydantic import BaseModel, conint
 from App.utils.data_preprocessing import format_dates, handle_missing_values, handle_outliers, encode_product_column
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, predict
-"uvicorn App.utils.fast_api_app:app --reload --port 8000"
-"uvicorn App.utils.fast_api_app:app --host 127.0.0.1 --port 8000 --workers 4"
+
+"uvicorn App.utils.fast_api_app:app --port 8000"
+"fastapi dev App/utils/fast_api_app.py"
 app = FastAPI()
 
 
 class InputData(BaseModel):
-    column_mapping: Dict[str, str]
-    data: List[dict[str, Any]]
-    X_train: Dict[str, List]
-    X_test: Dict[str, List]
-    y_train: Dict[str, List]
-    y_test: Dict[str, List]
-    seasonality: conint(gt=0)
-    train_forecast_steps : conint(gt=0)
-    test_forecast_steps: conint(gt=0)
-    model_name : str
+    column_mapping: Optional[Dict[str, str]] = None
+    data: Optional[List[Dict[str, Any]]] = None
+    X_train: Optional[List[Dict[str, Any]]] = None
+    X_test: Optional[List[Dict[str, Any]]] = None
+    y_train: Optional[List[Dict[str, Any]]] = None
+    y_test: Optional[List[Dict[str, Any]]] = None
+    seasonality: Optional[conint(gt=0)] = None
+    train_forecast_steps : Optional[conint(gt=0)] = None
+    test_forecast_steps: Optional[conint(gt=0)] = None
+    model_name : Optional[str] = None
 
 
 ## Pre Processing
