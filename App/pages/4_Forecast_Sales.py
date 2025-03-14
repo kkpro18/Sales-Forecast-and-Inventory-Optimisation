@@ -32,14 +32,14 @@ else:
         st.dataframe(X_test)
         st.dataframe(y_test)
 
-        json_response = SessionManager.flask_api_call("fit_and_store_arima_model_call",
+        json_response = SessionManager.fast_api_call("fit_and_store_arima_model_call",
                                                       y_train = y_train.to_dict())
         if json_response.status_code == 200:
             st.write(joblib.load('arima.pkl').summary())
         else:
             st.error(json_response.text)
 
-        json_response = SessionManager.flask_api_call("predict_train_test",
+        json_response = SessionManager.fast_api_call("predict_train_test",
                                                       train_forecast_steps = len(X_train) - 1,
                                                       test_forecast_steps = len(X_test),
                                                       model_name = 'arima')
@@ -55,11 +55,11 @@ else:
 
 
         sales_seasonality = get_seasonality()
-        SessionManager.flask_api_call("fit_and_store_sarima_model_call",
+        SessionManager.fast_api_call("fit_and_store_sarima_model_call",
                                       y_train = y_train.to_dict(),
                                       seasonality = sales_seasonality)
         st.write(joblib.load('sarima.pkl').summary())
-        json_response = SessionManager.flask_api_call("predict_train_test",
+        json_response = SessionManager.fast_api_call("predict_train_test",
                                                       train_forecast_steps=len(X_train) - 1,
                                                       test_forecast_steps=len(X_test),
                                                       model_name='sarima')

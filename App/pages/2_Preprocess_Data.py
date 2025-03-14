@@ -1,6 +1,4 @@
 import time
-
-import requests
 import streamlit as st
 from App.utils.session_manager import SessionManager
 import pandas as pd
@@ -26,28 +24,28 @@ else:
     data_as_dictionary = data.to_dict(orient='records')
 
 
-    json_response = SessionManager.flask_api_call("format_dates_call", data = data_as_dictionary, column_mapping = column_mapping)
+    json_response = SessionManager.fast_api_call("format_dates_call", data = data_as_dictionary, column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success("Successfully Formatted Dates")
     else:
         st.error(json_response.text)
 
     st.write("Handling Missing Values ")
-    json_response = SessionManager.flask_api_call("handle_missing_values_call", data = json_response.json(), column_mapping = column_mapping)
+    json_response = SessionManager.fast_api_call("handle_missing_values_call", data = json_response.json(), column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success("Successfully Handled Missing Values")
     else:
         st.error(json_response.text)
 
     st.write("Handling Outliers")
-    json_response = SessionManager.flask_api_call("handle_outliers_call", data = json_response.json(), column_mapping = column_mapping)
+    json_response = SessionManager.fast_api_call("handle_outliers_call", data = json_response.json(), column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success("Successfully Handled Outliers")
     else:
         st.error(json_response.text)
 
     st.write("Numerically Encoding Product ID (Unique Identifier)")
-    json_response = SessionManager.flask_api_call("encode_product_column_call", data = json_response.json(), column_mapping = column_mapping)
+    json_response = SessionManager.fast_api_call("encode_product_column_call", data = json_response.json(), column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success("Successfully Encoded Product ID")
     else:

@@ -25,8 +25,10 @@ class SessionManager:
             return False
 
     @staticmethod
-    def flask_api_call(endpoint, **kwargs):
-        url = f'http://127.0.0.1:5000/{endpoint}'
-        response = requests.post(url,
-                                 json = kwargs)
+    def fast_api_call(endpoint, **kwargs):
+        url = f'http://127.0.0.1:8000/{endpoint}'
+        response = requests.post(
+            url,
+            json=kwargs
+        )
         return response
