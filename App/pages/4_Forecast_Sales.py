@@ -32,50 +32,58 @@ else:
         # st.dataframe(X_test.head())
         # st.dataframe(y_test.head())
 
-        json_response = SessionManager.fast_api_call("fit_and_store_arima_model_call",
-                                                     y_train=y_train.to_dict())
+        # json_response = SessionManager.fast_api_call("fit_and_store_arima_model_call",
+        #                                              y_train=y_train.to_dict())
+        # if json_response.status_code == 200:
+        #     arima_model_path = json_response.json()["arima_model_path"]
+        #     st.write(joblib.load(arima_model_path).summary())
+        # else:
+        #     st.error(json_response.text)
+        #
+        # json_response = SessionManager.fast_api_call("predict_train_test",
+        #                                              test_forecast_steps=len(X_test),
+        #                                              model_path=arima_model_path)
+        #
+        # if json_response.status_code == 200:
+        #     y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
+        #     y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
+        # else:
+        #     st.error(json_response.text)
+        # # st.write(y_train.shape)
+        # # st.write(y_train_prediction_arima.shape)
+        # # st.write(y_test.shape)
+        # # st.write(y_test_prediction_arima.shape)
+        #
+        # print_performance_metrics(arima_model_path, y_train, y_train_prediction_arima, y_test, y_test_prediction_arima)
+        #
+        # json_response = SessionManager.fast_api_call("fit_and_store_sarima_model_call",
+        #                              y_train=y_train.to_dict(),
+        #                              seasonality=SessionManager.get_state('selected_seasonality'))
+        #
+        # if json_response.status_code == 200:
+        #     sarima_model_path = json_response.json()["sarima_model_path"]
+        #     st.write(joblib.load(sarima_model_path).summary())
+        # else:
+        #     st.error(json_response.text)
+        #
+        # json_response = SessionManager.fast_api_call("predict_train_test",
+        #                                              test_forecast_steps=len(X_test),
+        #                                              model_path=sarima_model_path)
+        # if json_response.status_code == 200:
+        #     y_train_prediction_sarima = json_response.json()["y_train_prediction"]
+        #     y_test_prediction_sarima = json_response.json()["y_test_prediction"]
+        # else:
+        #     st.error(json_response.text)
+        #
+        # print_performance_metrics(sarima_model_path, y_train, y_train_prediction_sarima, y_test, y_test_prediction_sarima)
+        json_response = SessionManager.fast_api_call("fit_models_in_parallel", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'))
         if json_response.status_code == 200:
-            arima_model_path = json_response.json()["arima_model_path"]
+            arima_model_path = json_response.json()["arima"]["arima_model_path"]
+            sarima_model_path = json_response.json()["sarima"]["sarima_model_path"]
             st.write(joblib.load(arima_model_path).summary())
-        else:
-            st.error(json_response.text)
-
-        json_response = SessionManager.fast_api_call("predict_train_test",
-                                                     test_forecast_steps=len(X_test),
-                                                     model_path=arima_model_path)
-
-        if json_response.status_code == 200:
-            y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
-        else:
-            st.error(json_response.text)
-        # st.write(y_train.shape)
-        # st.write(y_train_prediction_arima.shape)
-        # st.write(y_test.shape)
-        # st.write(y_test_prediction_arima.shape)
-
-        print_performance_metrics(arima_model_path, y_train, y_train_prediction_arima, y_test, y_test_prediction_arima)
-
-        json_response = SessionManager.fast_api_call("fit_and_store_sarima_model_call",
-                                     y_train=y_train.to_dict(),
-                                     seasonality=SessionManager.get_state('selected_seasonality'))
-
-        if json_response.status_code == 200:
-            sarima_model_path = json_response.json()["sarima_model_path"]
             st.write(joblib.load(sarima_model_path).summary())
         else:
             st.error(json_response.text)
-
-        json_response = SessionManager.fast_api_call("predict_train_test",
-                                                     test_forecast_steps=len(X_test),
-                                                     model_path=sarima_model_path)
-        if json_response.status_code == 200:
-            y_train_prediction_sarima = json_response.json()["y_train_prediction"]
-            y_test_prediction_sarima = json_response.json()["y_test_prediction"]
-        else:
-            st.error(json_response.text)
-
-        print_performance_metrics(sarima_model_path, y_train, y_train_prediction_sarima, y_test, y_test_prediction_sarima)
 
         st.page_link("pages/5_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy",
                      icon="⚙️")

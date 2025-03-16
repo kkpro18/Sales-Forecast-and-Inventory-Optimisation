@@ -21,7 +21,7 @@ echo -e "${YELLOW}This script allows you to easily run this application, setting
 
 # Opening FastAPI - Preparing for API Requests from Streamlit Application
 echo "Setting up FastAPI for incoming requests..."
-osascript -e "tell application \"Terminal\" to do script \"cd $PROJECT_DIR && source $VENV_DIR/bin/activate && python App/utils/fast_api_app.py\""
+osascript -e "tell application \"Terminal\" to do script \"cd $PROJECT_DIR && source $VENV_DIR/bin/activate && uvicorn App.utils.fast_api_app:app --port 8000 --reload\""
 
 # Open a new Terminal window and run Streamlit app
 echo "Opening Sales Forecasting App..."

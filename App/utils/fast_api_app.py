@@ -1,4 +1,5 @@
-
+import asyncio
+from concurrent.futures import ProcessPoolExecutor
 from typing import Optional, Dict, List, Any
 import joblib
 import pandas as pd
@@ -9,10 +10,10 @@ from App.utils.data_preprocessing import format_dates, handle_missing_values, ha
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, predict
 from datetime import datetime
 
-"uvicorn App.utils.fast_api_app:app --port 8000"
-"fastapi dev App/utils/fast_api_app.py"
-app = FastAPI()
+"uvicorn App.utils.fast_api_app:app --port 8000 --reload"
 
+app = FastAPI()
+executor = ProcessPoolExecutor(max_workers=2) # do one less than the number of cores
 
 class InputData(BaseModel):
     column_mapping: Optional[Dict[str, str]] = None
@@ -65,7 +66,7 @@ def encode_product_column_call(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Model Fitting
-@app.post("/fit_and_store_arima_model_call")
+# @app.post("/fit_and_store_arima_model_call")
 def fit_and_store_arima_model_call(received_data: InputData):
     try:
         if not received_data.y_train:
@@ -81,7 +82,7 @@ def fit_and_store_arima_model_call(received_data: InputData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"arima_model_path": arima_model_path}
-@app.post("/fit_and_store_sarima_model_call")
+# @app.post("/fit_and_store_sarima_model_call")
 
 def fit_and_store_sarima_model_call(received_data: InputData):
     try:
@@ -103,6 +104,18 @@ def fit_and_store_sarima_model_call(received_data: InputData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"sarima_model_path": sarima_model_path}
+
+
+@app.post("/fit_models_in_parallel")
+async def fit_models_in_parallel(received_data: InputData):
+    loop = asyncio.get_running_loop()
+
+    fitting_arima = loop.run_in_executor(executor, fit_and_store_arima_model_call, received_data)
+    fitting_sarima = loop.run_in_executor(executor, fit_and_store_sarima_model_call, received_data)
+
+    arima_model, sarima_model = await asyncio.gather(fitting_arima, fitting_sarima)
+
+    return {"arima" : arima_model, "sarima" : sarima_model}
 
 # Model Predictions
 @app.post("/predict_train_test")
