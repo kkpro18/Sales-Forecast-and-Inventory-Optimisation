@@ -13,7 +13,7 @@ from datetime import datetime
 "uvicorn App.utils.fast_api_app:app --port 8000 --reload"
 
 app = FastAPI()
-executor = ProcessPoolExecutor(max_workers=2) # do one less than the number of cores
+executor = ProcessPoolExecutor(max_workers=2) # do one less than the number of cores || no. jobs in parallel
 
 class InputData(BaseModel):
     column_mapping: Optional[Dict[str, str]] = None
@@ -28,8 +28,8 @@ class InputData(BaseModel):
 
 
 ## Pre Processing
-@app.post("/format_dates_call")
-def format_dates_call(received_data: InputData):
+@app.post("/format_dates_api")
+def format_dates_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
@@ -37,8 +37,8 @@ def format_dates_call(received_data: InputData):
         return format_dates(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/handle_missing_values_call")
-def handle_missing_values_call(received_data: InputData):
+@app.post("/handle_missing_values_api")
+def handle_missing_values_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
@@ -46,8 +46,8 @@ def handle_missing_values_call(received_data: InputData):
         return handle_missing_values(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/handle_outliers_call")
-def handle_outliers_call(received_data: InputData):
+@app.post("/handle_outliers_api")
+def handle_outliers_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
@@ -55,8 +55,8 @@ def handle_outliers_call(received_data: InputData):
         return handle_outliers(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/encode_product_column_call")
-def encode_product_column_call(received_data: InputData):
+@app.post("/encode_product_column_api")
+def encode_product_column_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
@@ -66,11 +66,12 @@ def encode_product_column_call(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
 
 # Model Fitting
-# @app.post("/fit_and_store_arima_model_call")
-def fit_and_store_arima_model_call(received_data: InputData):
+
+# Methods to fit models
+def fit_and_store_arima_model(received_data: InputData):
     try:
-        if not received_data.y_train:
-            raise ValueError("y_train is missing.")
+        if not received_data.y_train or len(received_data.y_train) == 0:
+            raise ValueError("y_train is missing / empty")
         y_train = pd.Series(received_data.y_train)
 
         arima_model = fit_arima_model(y_train)
@@ -82,17 +83,15 @@ def fit_and_store_arima_model_call(received_data: InputData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     return {"arima_model_path": arima_model_path}
-# @app.post("/fit_and_store_sarima_model_call")
 
-def fit_and_store_sarima_model_call(received_data: InputData):
+def fit_and_store_sarima_model(received_data: InputData):
     try:
-        if not received_data.y_train:
-            raise ValueError("y_train is missing.")
+        if not received_data.y_train or len(received_data.y_train) == 0:
+            raise ValueError("y_train is missing / empty")
         if received_data.seasonality is None:
             raise ValueError("seasonality is missing.")
 
         seasonality = received_data.seasonality
-        print(seasonality)
         y_train = pd.Series(received_data.y_train)
 
         sarima_model = fit_sarima_model(y_train, seasonality)
@@ -106,20 +105,22 @@ def fit_and_store_sarima_model_call(received_data: InputData):
     return {"sarima_model_path": sarima_model_path}
 
 
-@app.post("/fit_models_in_parallel")
-async def fit_models_in_parallel(received_data: InputData):
+# API Endpoint for fitting models in Parallel
+@app.post("/fit_models_in_parallel_api")
+async def fit_models_in_parallel_api(received_data: InputData): # https://blog.stackademic.com/fastapi-parallel-processing-1eaa67981ab9
     loop = asyncio.get_running_loop()
 
-    fitting_arima = loop.run_in_executor(executor, fit_and_store_arima_model_call, received_data)
-    fitting_sarima = loop.run_in_executor(executor, fit_and_store_sarima_model_call, received_data)
+    fitting_arima = loop.run_in_executor(executor, fit_and_store_arima_model, received_data)
+    fitting_sarima = loop.run_in_executor(executor, fit_and_store_sarima_model, received_data)
 
     arima_model, sarima_model = await asyncio.gather(fitting_arima, fitting_sarima)
 
     return {"arima" : arima_model, "sarima" : sarima_model}
 
+
 # Model Predictions
-@app.post("/predict_train_test")
-def predict_train_test(received_data: InputData):
+@app.post("/predict_train_test_api")
+def predict_train_test_api(received_data: InputData):
     try:
         test_forecast_steps = received_data.test_forecast_steps
         model_path = received_data.model_path

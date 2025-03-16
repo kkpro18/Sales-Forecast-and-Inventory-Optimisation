@@ -4,9 +4,12 @@ import streamlit as st
 import plotly.graph_objects as go
 from App.utils.session_manager import SessionManager
 
-def visualise_storewide_sales(data, column_mapping):
+def visualise_storewide_sales(data, column_mapping, quantity_sold_column=None):
     date_column = column_mapping["date_column"]
-    quantity_sold_column = column_mapping["quantity_sold_column"]
+    if quantity_sold_column is None:
+        quantity_sold_column = column_mapping["quantity_sold_column"]
+    else:
+        quantity_sold_column = quantity_sold_column
 
     figure = go.Figure()
     figure.add_trace(go.Scatter(x=data[date_column], y=data[quantity_sold_column]))
@@ -17,10 +20,13 @@ def visualise_storewide_sales(data, column_mapping):
             yaxis_title=quantity_sold_column, )
     st.plotly_chart(figure)
 
-def visualise_individual_product_sales(data, column_mapping):
+def visualise_individual_product_sales(data, column_mapping, quantity_sold_column=None):
     date_column = column_mapping["date_column"]
     product_column = column_mapping["product_column"]
-    quantity_sold_column = column_mapping["quantity_sold_column"]
+    if quantity_sold_column is None:
+        quantity_sold_column = column_mapping["quantity_sold_column"]
+    else:
+        quantity_sold_column = quantity_sold_column
 
     product_groups = data.groupby(product_column)
     product_names = list(product_groups.groups.keys())

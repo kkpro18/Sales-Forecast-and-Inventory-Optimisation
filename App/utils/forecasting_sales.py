@@ -1,5 +1,11 @@
 import joblib
+import numpy as np
+import pandas as pd
 import streamlit as st
+
+from matplotlib import pyplot as plt
+import matplotlib.dates as mdates
+
 from sklearn.metrics import root_mean_squared_error, r2_score
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error, mean_absolute_error
 import pmdarima as pm
@@ -11,7 +17,7 @@ from App.utils.session_manager import SessionManager
 def split_training_testing_data(data, column_mapping):
     # st.write(column_mapping)
     features = column_mapping.copy()
-    features.pop("date_column")
+    features.pop("quantity_sold_column")
     features = features.values()
 
     target = column_mapping["quantity_sold_column"]
@@ -108,24 +114,26 @@ def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y
             right.metric(label=metric, value=round(value, 4))
 
 
-def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction):
+def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping):
+    X_train_dates = X_train[column_mapping["date_column"]]
+    X_test_dates = X_test[column_mapping["date_column"]]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=X_train, y=y_train, mode='lines', name='Training Data', line=dict(color='red')))
-    fig.add_trace(go.Scatter(x=X_test, y=y_test, mode='lines', name='Testing Data', line=dict(color='green')))
-    fig.add_trace(go.Scatter(x=X_test, y=y_test_prediction, mode='lines', name='Predicted Sales', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=X_train_dates, y=y_train, mode='lines', name='Training Data', line=dict(color='red')))
+    fig.add_trace(go.Scatter(x=X_test_dates, y=y_test, mode='lines', name='Testing Data', line=dict(color='green')))
+    fig.add_trace(go.Scatter(x=X_test_dates, y=y_test_prediction, mode='lines', name='Predicted Sales', line=dict(color='blue')))
 
-    fig.frames = []
-    for i in range(len(X_test)):
-        fig.frames.append(
-            go.Frame(
-                data=[
-                    go.Scatter(x=X_train[:i + 1], y=y_train[:i + 1], mode='lines', line=dict(color='red')),
-                    go.Scatter(x=X_test[:i + 1], y=y_test[:i + 1], mode='lines', line=dict(color='green')),
-                    go.Scatter(x=X_test[:i + 1], y=y_test_prediction[:i + 1], mode='lines', line=dict(color='blue')),
-                ],
-                name=str(i)
-            )
+    frames = [
+        go.Frame(
+            data=[
+                go.Scatter(x=X_train_dates, y=y_train, mode='lines', line=dict(color='red')),  # Static
+                go.Scatter(x=X_test_dates[:i + 1], y=y_test[:i + 1], mode='lines', line=dict(color='green')),
+                go.Scatter(x=X_test_dates[:i + 1], y=y_test_prediction[:i + 1], mode='lines', line=dict(color='blue'))
+            ]
         )
+        for i in range(len(X_test_dates))
+    ]
+
+    fig.frames = frames
 
     fig.update_layout(
         updatemenus=[
@@ -141,3 +149,7 @@ def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction):
     )
 
     st.plotly_chart(fig)
+
+
+
+    st.dataframe(X_train_dates)
