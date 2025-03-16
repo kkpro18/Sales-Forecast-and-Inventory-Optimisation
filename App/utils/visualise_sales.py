@@ -20,15 +20,10 @@ def visualise_storewide_sales(data, column_mapping, quantity_sold_column=None):
             yaxis_title=quantity_sold_column, )
     st.plotly_chart(figure)
 
-def visualise_individual_product_sales(data, column_mapping, quantity_sold_column=None):
+def visualise_individual_product_sales(product_groups, column_mapping):
     date_column = column_mapping["date_column"]
-    product_column = column_mapping["product_column"]
-    if quantity_sold_column is None:
-        quantity_sold_column = column_mapping["quantity_sold_column"]
-    else:
-        quantity_sold_column = quantity_sold_column
-
-    product_groups = data.groupby(product_column)
+    quantity_sold_column = column_mapping["quantity_sold_column"]
+    product_groups = product_groups.groupby(column_mapping["product_column"])
     product_names = list(product_groups.groups.keys())
 
     def plot_individual_product():
@@ -45,7 +40,6 @@ def visualise_individual_product_sales(data, column_mapping, quantity_sold_colum
         )
         st.plotly_chart(figure, key=uuid.uuid4())
 
-    # plot_individual_product()
     if not SessionManager.is_there("product_index"):
         SessionManager.set_state("product_index", 0)
         plot_individual_product()

@@ -2,6 +2,7 @@ import time
 import streamlit as st
 from App.utils.session_manager import SessionManager
 import pandas as pd
+import os
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -55,9 +56,7 @@ else:
     data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
     data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)
 
-    st.subheader("Preprocessed Data: ")
     daily_store_sales = data.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
-    st.dataframe(daily_store_sales)
 
     # product_group_daily_sales = data.groupby([column_mapping["date_column"], column_mapping["product_column"]], as_index=False).agg({column_mapping['quantity_sold_column']: 'sum'})
     product_sales = data.groupby([column_mapping["product_column"], column_mapping["date_column"]], as_index=False).agg(
@@ -69,30 +68,29 @@ else:
     #     st.header(f"Product: {product}")
     #     st.dataframe(group)
 
-
-
     SessionManager.set_state("preprocess_data_complete", True)
     # SessionManager.set_state("data", data)
     SessionManager.set_state("daily_store_sales", daily_store_sales)
     SessionManager.set_state("daily_product_grouped_sales", product_sales)
 
-    st.subheader("Preprocessed Data: ")
-    st.dataframe(SessionManager.get_state("data"))
+    st.subheader("Preprocessed Data: (daily_store_sales) ")
+    st.dataframe(SessionManager.get_state("daily_store_sales"))
+
+    st.subheader("Preprocessed Data: (product_sales) ")
+    st.dataframe(SessionManager.get_state("daily_product_grouped_sales"))
     st.balloons()
 
-    daily_store_sales_csv = daily_store_sales.to_csv(index=False)
-    st.download_button(
-        label="Download the daily_store_sales Data as a CSV File",
-        data=daily_store_sales_csv,
-        file_name="preprocessed_data.csv",
-    )
+    os.makedirs("store_sales", exist_ok=True)
+    daily_store_sales.to_csv("store_sales/daily_store_sales.csv", index=False)
+    st.success(f"daily_store_sales saved")
 
-    daily_product_grouped_sales_csv = data.to_csv(index=False)
-    st.download_button(
-        label="Download the daily_product_grouped_sales Data as a CSV File",
-        data=daily_product_grouped_sales_csv,
-        file_name="preprocessed_data.csv",
-    )
+    os.makedirs("product_sales", exist_ok=True)
+    for product, group in product_sales.groupby(column_mapping["product_column"]):
+        file_name = f"product_sales/{product}_sales.csv"
+        group.to_csv(file_name, index=False)
+        st.success(f"Saved: {file_name}")
+
+
     # time.sleep(3)
     # st.switch_page("pages/3_Visualise_Data.py")
 
