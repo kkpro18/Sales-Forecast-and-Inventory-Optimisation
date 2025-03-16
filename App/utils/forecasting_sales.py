@@ -1,14 +1,19 @@
 import joblib
 import streamlit as st
 from sklearn.metrics import root_mean_squared_error, r2_score
-from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
+from sktime.performance_metrics.forecasting import mean_absolute_scaled_error, mean_absolute_error
 import pmdarima as pm
 import plotly.graph_objects as go
+
+from App.utils.session_manager import SessionManager
+
 
 def split_training_testing_data(data, column_mapping):
     # st.write(column_mapping)
     features = column_mapping.copy()
-    features = features.pop("date_column")
+    features.pop("date_column")
+    features = features.values()
+
     target = column_mapping["quantity_sold_column"]
 
     # 70 : 30 split
@@ -22,34 +27,16 @@ def split_training_testing_data(data, column_mapping):
     st.toast("Data has been split into training and test set 70:30 Ratio")
 
     return X_train, X_test, y_train, y_test
-def print_performance_metrics(model, y_train, y_train_prediction, y_test, y_test_prediction):
-    performance_metrics = {
-        "Train: Mean Absolute Scaled Error (MASE)": mean_absolute_scaled_error(y_test, y_train_prediction, y_train),
-        "Test: Mean Absolute Scaled Error (MASE)": mean_absolute_scaled_error(y_test, y_test_prediction, y_train),
-        "Train: Root Mean Squared Error (RMSE)": root_mean_squared_error(y_train, y_train_prediction),
-        "Test: Mean Absolute Error (MAE)": root_mean_squared_error(y_test, y_test_prediction),
-        "Train: Akaike Information Criterion (AIC)": model.aic,
-        "Test: Bayesian Information Criterion (BIC)": model.bic,
-        "Train: R Squared (R²)": r2_score(y_train, y_train_prediction),
-        "Test: R Squared (R²)": r2_score(y_test, y_test_prediction)
-    }
-    for metric, value in performance_metrics.items():
-        st.metric(label=metric, value=round(value, 4))
-    # print(performance_metrics)
 
 def get_seasonality():
     seasonality_frequency = [7, 12, 365]
 
     selected_seasonality = st.radio(label="Select the seasonality that applies to your store (7 - Weekly,  12 - Monthly, 365 - Yearly)", options=seasonality_frequency)
-    # SessionManager.set_state("selected_seasonality", selected_seasonality)
+    SessionManager.set_state("selected_seasonality", selected_seasonality)
+    if st.button("Confirm Selection"):
+        st.write(f"You Selected {SessionManager.get_state('selected_seasonality')}.")
 
-    # st.markdown(f"You Selected {SessionManager.get_state(selected_seasonality)}.")
-    #
-    # return SessionManager.get_state(selected_seasonality)
-    st.markdown(f"You Selected {selected_seasonality}.")
-
-    return selected_seasonality
-
+        return SessionManager.get_state('selected_seasonality')
 
 def fit_arima_model(y_train):
     st.write("ARIMA")
@@ -70,8 +57,8 @@ def fit_sarima_model(y_train, seasonality):
                                  trace=True,
                                  error_action='ignore',  # don't want to know if an order does not work
                                  suppress_warnings=True,  # don't want convergence warnings
-                                 stepwise=True,  # set to stepwise for quicker - false does grid search takes longer
-    )  # uses all cpu cores
+                                 stepwise=True,  # set to stepwise for quicker
+    )
 
     # st.write(sarima_model.summary())
     return sarima_model
@@ -88,9 +75,38 @@ def fit_fb_prophet_model():
     pass
 
 
-def predict(forecast_periods, model_name):
-    predictions = joblib.load(f'models/{model_name}.pkl').predict(n_periods=forecast_periods)
+def predict(model_path, forecast_periods):
+    if forecast_periods is None:
+        predictions = joblib.load(model_path).predict_in_sample()  # Train
+    else:
+        predictions = joblib.load(model_path).predict(n_periods=forecast_periods)  # Test / Predict Future
     return predictions
+
+
+def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y_test_prediction):
+    # st.write(f"y_train length: {len(y_train)}, y_train_prediction length: {len(y_train_prediction)}")
+    # st.write(f"y_test length: {len(y_test)}, y_test_prediction length: {len(y_test_prediction)}")
+
+    model = joblib.load(model_path)
+    performance_metrics = {
+        "Train: Mean Absolute Scaled Error (MASE)": mean_absolute_scaled_error(y_train, y_train_prediction, y_train=y_train),
+        "Test: Mean Absolute Scaled Error (MASE)": mean_absolute_scaled_error(y_test, y_test_prediction, y_train=y_train),
+        "Train: Root Mean Squared Error (RMSE)": root_mean_squared_error(y_train, y_train_prediction),
+        "Test: Root Mean Squared Error (RMSE)": root_mean_squared_error(y_test, y_test_prediction),
+        "Train: Mean Absolute Error (MAE)": mean_absolute_error(y_train, y_train_prediction),
+        "Test: Mean Absolute Error (MAE)": mean_absolute_error(y_test, y_test_prediction),
+        "Train: R Squared (R²)": r2_score(y_train, y_train_prediction),
+        "Test: R Squared (R²)": r2_score(y_test, y_test_prediction),
+        "Akaike Information Criterion (AIC)": model.aic(),
+        "Bayesian Information Criterion (BIC)": model.bic(),
+    }
+    left, right = st.columns(2)
+    for i, (metric, value) in enumerate(performance_metrics.items()):
+        if i < 5:
+            left.metric(label=metric, value=round(value, 4))
+        else:
+            right.metric(label=metric, value=round(value, 4))
+
 
 def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction):
     fig = go.Figure()
