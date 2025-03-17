@@ -1,3 +1,6 @@
+import os
+import shutil
+
 import streamlit as st
 import requests
 
@@ -32,3 +35,12 @@ class SessionManager:
             json=kwargs
         )
         return response
+
+    @staticmethod
+    def cleanup():
+        # file_paths = ["models", "product_sales", "store_sales"] # cleans up space
+        file_paths = ["product_sales", "store_sales"]  # cleans up space
+        for path in file_paths:
+            if os.path.exists(path):
+                shutil.rmtree(path) # remove directory
+                os.makedirs(path)  # creates directory ready for next run

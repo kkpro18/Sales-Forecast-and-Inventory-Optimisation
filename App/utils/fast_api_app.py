@@ -46,6 +46,7 @@ def handle_missing_values_api(received_data: InputData):
         return handle_missing_values(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/handle_outliers_api")
 def handle_outliers_api(received_data: InputData):
     try:
@@ -55,6 +56,7 @@ def handle_outliers_api(received_data: InputData):
         return handle_outliers(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 @app.post("/encode_product_column_api")
 def encode_product_column_api(received_data: InputData):
     try:
@@ -125,8 +127,18 @@ def predict_train_test_api(received_data: InputData):
         test_forecast_steps = received_data.test_forecast_steps
         model_path = received_data.model_path
 
-        y_train_prediction = predict(model_path=model_path, forecast_periods=None)
+        if received_data.model_path is None:
+            raise ValueError("Model path is None")
+        if (test_forecast_steps <= 0):
+            raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
+
+        y_train_prediction = predict(model_path=model_path)
         y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
+
+        if y_train_prediction.isna().any():
+            raise ValueError("y_train_prediction contains NaNs")
+        if y_test_prediction.isna().any():
+            raise ValueError("y_test_prediction contains NaNs")
 
         return {"y_train_prediction": y_train_prediction, "y_test_prediction": y_test_prediction}
 

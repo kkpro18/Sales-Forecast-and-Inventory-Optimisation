@@ -38,6 +38,20 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/product_sales/10002_sales.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/store_sales/daily_store_sales.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>

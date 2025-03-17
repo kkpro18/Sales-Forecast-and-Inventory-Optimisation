@@ -1,5 +1,6 @@
 import streamlit as st
-
+import atexit
+import os
 from utils.session_manager import SessionManager
 
 # run app by "python -m streamlit run App/0_Home.py"
@@ -39,3 +40,4 @@ st.write(st.session_state)
 
 st.page_link("pages/1_Upload_Data.py", label="👈 First Upload Sales Data", icon="📁")
 
+atexit.register(SessionManager.cleanup) # Clean up Files Created by the App

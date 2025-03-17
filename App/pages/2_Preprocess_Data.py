@@ -53,14 +53,17 @@ else:
         st.error(json_response.text)
 
     data = pd.DataFrame(json_response.json())
+
     data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
     data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)
 
     daily_store_sales = data.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
 
-    # product_group_daily_sales = data.groupby([column_mapping["date_column"], column_mapping["product_column"]], as_index=False).agg({column_mapping['quantity_sold_column']: 'sum'})
-    product_sales = data.groupby([column_mapping["product_column"], column_mapping["date_column"]], as_index=False).agg(
+    product_sales = data.groupby(
+        [column_mapping["product_column"], column_mapping["date_column"]], as_index=False
+    ).agg(
         {
+            column_mapping["price_column"]: 'mean',
             column_mapping["quantity_sold_column"]: 'sum'
         })
 
@@ -73,10 +76,10 @@ else:
     SessionManager.set_state("daily_store_sales", daily_store_sales)
     SessionManager.set_state("daily_product_grouped_sales", product_sales)
 
-    st.subheader("Preprocessed Data: (daily_store_sales) ")
+    st.subheader("daily_store_sales")
     st.dataframe(SessionManager.get_state("daily_store_sales"))
 
-    st.subheader("Preprocessed Data: (product_sales) ")
+    st.subheader("product_sales")
     st.dataframe(SessionManager.get_state("daily_product_grouped_sales"))
     st.balloons()
 

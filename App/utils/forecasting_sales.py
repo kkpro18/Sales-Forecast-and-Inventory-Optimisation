@@ -1,24 +1,22 @@
 import joblib
-import numpy as np
 import pandas as pd
+import plotly.graph_objects as go
+import pmdarima as pm
 import streamlit as st
-
-from matplotlib import pyplot as plt
-import matplotlib.dates as mdates
-
 from sklearn.metrics import root_mean_squared_error, r2_score
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error, mean_absolute_error
-import pmdarima as pm
-import plotly.graph_objects as go
-
+import uuid
 from App.utils.session_manager import SessionManager
 
 
-def split_training_testing_data(data, column_mapping):
+def split_training_testing_data(data, column_mapping, univariate=False):
     # st.write(column_mapping)
-    features = column_mapping.copy()
-    features.pop("quantity_sold_column")
-    features = features.values()
+    if univariate:
+        features = column_mapping["date_column"]
+    else:
+        features = column_mapping.copy()
+        features.pop("quantity_sold_column")
+        features = features.values()
 
     target = column_mapping["quantity_sold_column"]
 
@@ -33,7 +31,6 @@ def split_training_testing_data(data, column_mapping):
     st.toast("Data has been split into training and test set 70:30 Ratio")
 
     return X_train, X_test, y_train, y_test
-
 def get_seasonality():
     seasonality_frequency = [7, 12, 365]
 
@@ -79,19 +76,58 @@ def fit_lstm_model():
 
 def fit_fb_prophet_model():
     pass
-
-
-def predict(model_path, forecast_periods):
+def predict(model_path, forecast_periods=None):
+    if model_path is None or len(model_path) == 0:
+        st.error("No model path provided.")
     if forecast_periods is None:
         predictions = joblib.load(model_path).predict_in_sample()  # Train
     else:
         predictions = joblib.load(model_path).predict(n_periods=forecast_periods)  # Test / Predict Future
     return predictions
 
+def predict_store_wide_sales(X_train, X_test, y_train, y_test, column_mapping):
+
+    json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(),
+                                            seasonality=SessionManager.get_state('selected_seasonality'))
+    if json_response.status_code == 200:
+        arima_model_path = json_response.json()["arima"]["arima_model_path"]
+        sarima_model_path = json_response.json()["sarima"]["sarima_model_path"]
+    else:
+        st.error(json_response.text)
+
+    # Predict ARIMA
+    json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test), model_path=arima_model_path)
+    if json_response.status_code == 200:
+        y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
+        y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
+    else:
+        st.error(json_response.text)
+
+    # Predict SARIMA
+    json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+                                            model_path=sarima_model_path)
+
+    if json_response.status_code == 200:
+        y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
+        y_test_prediction_sarima = pd.Series(json_response.json()["y_test_prediction"])
+    else:
+        st.error(json_response.text)
+
+    st.markdown("### ARIMA Model:")
+    st.write(joblib.load(arima_model_path).summary())
+    print_performance_metrics(arima_model_path, y_train, y_train_prediction_arima, y_test, y_test_prediction_arima)
+    plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima, column_mapping, univariate=True)
+
+
+    st.markdown("### SARIMA Model:")
+    st.write(joblib.load(sarima_model_path).summary())
+    print_performance_metrics(sarima_model_path, y_train, y_train_prediction_sarima, y_test, y_test_prediction_sarima)
+    plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima, column_mapping, univariate=True)
+
+
+
 
 def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y_test_prediction):
-    # st.write(f"y_train length: {len(y_train)}, y_train_prediction length: {len(y_train_prediction)}")
-    # st.write(f"y_test length: {len(y_test)}, y_test_prediction length: {len(y_test_prediction)}")
 
     model = joblib.load(model_path)
     performance_metrics = {
@@ -113,10 +149,14 @@ def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y
         else:
             right.metric(label=metric, value=round(value, 4))
 
+def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping, univariate=False):
+    if univariate:
+        X_train_dates = X_train
+        X_test_dates = X_test
+    else:
+        X_train_dates = X_train[column_mapping["date_column"]]
+        X_test_dates = X_test[column_mapping["date_column"]]
 
-def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping):
-    X_train_dates = X_train[column_mapping["date_column"]]
-    X_test_dates = X_test[column_mapping["date_column"]]
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=X_train_dates, y=y_train, mode='lines', name='Training Data', line=dict(color='red')))
     fig.add_trace(go.Scatter(x=X_test_dates, y=y_test, mode='lines', name='Testing Data', line=dict(color='green')))
@@ -148,8 +188,4 @@ def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_
         ]
     )
 
-    st.plotly_chart(fig)
-
-
-
-    st.dataframe(X_train_dates)
+    st.plotly_chart(fig, key=uuid.uuid4())
