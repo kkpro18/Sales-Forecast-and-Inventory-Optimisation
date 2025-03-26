@@ -6,7 +6,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
-from App.utils.data_preprocessing import format_dates, handle_missing_values, handle_outliers, encode_product_column
+from App.utils.data_preprocessing import format_dates, handle_outliers, split_training_testing_data, handle_missing_values
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, predict
 from datetime import datetime
 
@@ -38,15 +38,6 @@ def format_dates_api(received_data: InputData):
         return format_dates(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/handle_missing_values_api")
-def handle_missing_values_api(received_data: InputData):
-    try:
-        data = pd.DataFrame(received_data.data)
-        column_mapping = received_data.column_mapping
-
-        return handle_missing_values(data, column_mapping).to_dict(orient="records")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/handle_outliers_api")
 def handle_outliers_api(received_data: InputData):
@@ -57,14 +48,33 @@ def handle_outliers_api(received_data: InputData):
         return handle_outliers(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-@app.post("/encode_product_column_api")
-def encode_product_column_api(received_data: InputData):
+@app.post("/train_test_split_api")
+def train_test_split_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
 
-        return encode_product_column(data, column_mapping).to_dict(orient="records")
+        X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping)
+        return {
+            "X_train": X_train.to_dict(orient="records"),
+            "X_test": X_test.to_dict(orient="records"),
+            "y_train": y_train.to_dict(orient="records"),
+            "y_test": y_test.to_dict(orient="records")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+@app.post("/handle_missing_values_api")
+def handle_missing_values_api(received_data: InputData):
+    try:
+        X_train = pd.DataFrame(received_data.X_train)
+        X_test = pd.DataFrame(received_data.X_test)
+
+        y_train = pd.DataFrame(received_data.y_train)
+        y_test = pd.DataFrame(received_data.y_test)
+
+        column_mapping = received_data.column_mapping
+
+        return handle_missing_values(X_train, X_test, y_train, y_test, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

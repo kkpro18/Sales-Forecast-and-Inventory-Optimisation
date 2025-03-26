@@ -31,24 +31,6 @@ else:
         st.dataframe(store_wide_sales)
         data = store_wide_sales
         asyncio.run(predict_sales(data, column_mapping, product_name=None))
-        st.markdown("### Individual Product Sales Forecasting")
-
-
-        # Product Sales
-        product_grouped_sales = SessionManager.get_state("daily_product_grouped_sales")
-        product_grouped_sales = product_grouped_sales.groupby(column_mapping["product_column"])
-        product_names = list(product_grouped_sales.groups.keys())
-        for product_name in product_names:
-            st.write(f"### {product_name}")
-            product_data = product_grouped_sales.get_group(product_name)
-            data = product_data
-            st.dataframe(product_data)
-            asyncio.run(predict_sales(data, column_mapping, product_name=product_name))
-            next_product_prediction = False
-            while not next_product_prediction:
-                next_product_prediction = st.button("Next Product")
-
-
 
         st.page_link("pages/5_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy",
                      icon="⚙️")

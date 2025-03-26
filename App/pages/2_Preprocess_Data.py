@@ -31,13 +31,6 @@ else:
     else:
         st.error(json_response.text)
 
-    st.write("Handling Missing Values ")
-    json_response = SessionManager.fast_api("handle_missing_values_api", data = json_response.json(), column_mapping = column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Handled Missing Values: No. Rows = {len(json_response.json())}")
-    else:
-        st.error(json_response.text)
-
     st.write("Handling Outliers")
     json_response = SessionManager.fast_api("handle_outliers_api", data = json_response.json(), column_mapping = column_mapping)
     if json_response.status_code == 200:
@@ -45,14 +38,26 @@ else:
     else:
         st.error(json_response.text)
 
-    st.write("Numerically Encoding Product ID (Unique Identifier)")
-    json_response = SessionManager.fast_api("encode_product_column_api", data = json_response.json(), column_mapping = column_mapping)
+    st.write("Splitting into Train, Test")
+    json_response = SessionManager.fast_api("train_test_split_api", data=json_response.json(),
+                                            column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Encoded Product IDs: No. Rows = {len(json_response.json())}")
+        st.success(f"Successfully Split Dataset: = {len(json_response.json())}")
     else:
         st.error(json_response.text)
 
-    data = pd.DataFrame(json_response.json())
+
+    st.write("Handling Missing Values ")
+    json_response = SessionManager.fast_api("handle_missing_values_api", data=json_response.json(),
+                                            column_mapping=column_mapping)
+    if json_response.status_code == 200:
+        st.success(f"Successfully Handled Missing Values: No. Rows = {len(json_response.json())}")
+    else:
+        st.error(json_response.text)
+
+    # SCALE LOG
+
+    print(json_response)
 
     data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
     data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)

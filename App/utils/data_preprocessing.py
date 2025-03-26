@@ -64,46 +64,68 @@ def handle_outliers(data, column_mapping):
 
     return data
 
-def handle_missing_values(data, column_mapping):
-    quantity_sold_column = column_mapping["quantity_sold_column"]
+
+def split_training_testing_data(data, column_mapping):
+    features = column_mapping.copy()
+    features.pop("quantity_sold_column")
+    features = features.values()
+
+    target = column_mapping["quantity_sold_column"]
+
+    # 70 : 30 split
+    train_size = int(len(data) * 0.70)
+
+    train = data[:train_size]
+    test = data[train_size:]
+
+    X_train, X_test = train[features], test[features]
+    y_train, y_test = train[target], test[target]
+    st.success("Data has been split into training and test set 70:30 Ratio")
+
+    return X_train, X_test, y_train, y_test
+
+def handle_missing_values(X_train, X_test, y_train, y_test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
 
-    if data.isnull().values.any():
+    if X_train.isnull().values.any() or X_test.isnull().values.any() or y_train.isnull().values.any() or y_test.isnull().values.any():
         # rows_with_missing_values = data[data.isnull().any(axis=1)]
         st.write("Data contains Missing or Null values")
 
+        if y_train.isnull().values.any() or y_test.isnull().values.any(): # if target column has missing values, no point imputing so drop
+            y_train_null_indices = y_train[y_train.isnull()].index
+            y_test_null_indices = y_test[y_test.isnull()].index
+
+            X_train.drop(y_train_null_indices, inplace=True)
+            X_test.drop(y_test_null_indices, inplace=True)
+
+            y_train.drop(y_train_null_indices, inplace=True)
+            y_test.drop(y_test_null_indices, inplace=True)
+
         product_impute = SimpleImputer(strategy='most_frequent')
-        sales_impute = SimpleImputer(strategy='median')
         price_impute = SimpleImputer(strategy='mean')
 
         ct = ColumnTransformer(
             [
-                ("product_impute", product_impute, [product_column]),
-                ("sales_impute", sales_impute, [quantity_sold_column]),
-                ("price_impute", price_impute, [price_column])
+                ("product_imputer", product_impute, [product_column]),
+                ("price_imputer", price_impute, [price_column])
             ],
             verbose_feature_names_out=False,
             remainder="passthrough")
 
         ct.set_output(transform="pandas")
-        data = ct.fit_transform(data)
+        ct.fit(X_train)
 
-        if data.isnull().values.any():
+        X_train = ct.transform(X_train)
+        X_test = ct.transform(X_test)
+
+        if X_train.isnull().values.any() or X_test.isnull().values.any():
             st.warning("Missing Values Still Exists :/")
-            st.dataframe(data[data.isnull().any(axis=1)])
+            st.dataframe(X_train[X_train.isnull().any(axis=1)])
+            st.dataframe(X_test[X_test.isnull().any(axis=1)])
         else:
             st.success("Missing Values Processed and Cleaned")
     else:
         st.success("Data contains no missing or null values")
-    return data
 
-def encode_product_column(data, column_mapping):
-    product_column = column_mapping["product_column"]
-    quantity_sold_column = column_mapping["quantity_sold_column"]
-
-    target_encoder = TargetEncoder(cols=product_column)
-    data["product_encoded"] = target_encoder.fit_transform(data[product_column], data[quantity_sold_column])
-    # st.write("Target Encoded Result ", uploaded_dataset.sort_values(units_sold_column, ascending=True).head(5))
-    st.success("Product Column has been successfully encoded")
-    return data
+    return X_train, X_test, y_train, y_test
