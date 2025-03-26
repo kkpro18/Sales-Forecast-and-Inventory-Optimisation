@@ -87,6 +87,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/Z_Experiments/1_datasets/archive.ics.uci.edu--online+retail+ii/online_retail_II_2009_2010.csv">
           <value>
             <Attribute>

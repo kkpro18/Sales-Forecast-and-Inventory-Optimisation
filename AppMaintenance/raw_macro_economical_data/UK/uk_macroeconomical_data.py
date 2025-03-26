@@ -2,14 +2,14 @@ import pandas as pd
 
 # update filenames when a release is made for any dataset and rerun script
 
-bank_rate = pd.read_csv("raw_macro_economical_data/UK/UK_BoE_Bank_Rate.csv", parse_dates=["Date"], dayfirst=True)
-cphih = pd.read_csv("raw_macro_economical_data/UK/UK_CPIH_250125.csv")
-internet_sales = pd.read_csv("raw_macro_economical_data/UK/UK_Internet_Sales_Ratio.csv")
-ukrpi = pd.read_csv("raw_macro_economical_data/UK/UK_RPI_250125.csv")
-unemployment = pd.read_csv("raw_macro_economical_data/UK/UK_Unemployment_Rate.csv")
+bank_rate = pd.read_csv("UK_BoE_Bank_Rate.csv", parse_dates=["Date"], dayfirst=True)
+cphih = pd.read_csv("UK_CPIH_250125.csv")
+internet_sales = pd.read_csv("UK_Internet_Sales_Ratio.csv")
+ukrpi = pd.read_csv("UK_RPI_250125.csv")
+unemployment = pd.read_csv("UK_Unemployment_Rate.csv")
 
 def process_monthly_data(data_frame, date_col):
-    # uses regular expressions to only select rows with 4 digits(d) for years eg 1989 and 3 letters([A-Z]) for months eg Jan, if null skipped
+    # uses regular expressions to only select rows with 4 digits(d) for years eg 1989 and 3 letters([A-Z]) for months eg JAN, if null skipped
     data_frame = data_frame[data_frame[date_col].str.match(r'\d{4} [A-Z]{3}', na=False)]
 
     # converts existing date column to datetime format with existing format Year and Abbreviated month
@@ -42,6 +42,6 @@ merged_data_frame.ffill(inplace=True)
 # if there is still missing values, it is due to the actual dataset not having the data, so it is filled with 0 so no issues are created
 merged_data_frame.fillna(0, inplace=True)
 
-merged_data_frame.to_csv("raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv", index=False)
+merged_data_frame.to_csv("Processed/uk_macro_economical_data.csv", index=False)
 
 print("Merging complete. Saved as uk_macro_economical_data.csv")
