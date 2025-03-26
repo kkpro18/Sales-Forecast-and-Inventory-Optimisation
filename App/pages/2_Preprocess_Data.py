@@ -83,15 +83,15 @@ else:
     st.dataframe(SessionManager.get_state("daily_product_grouped_sales"))
     st.balloons()
 
-    os.makedirs("store_sales", exist_ok=True)
-    daily_store_sales.to_csv("store_sales/daily_store_sales.csv", index=False)
-    st.success(f"daily_store_sales saved")
+    # os.makedirs("store_sales", exist_ok=True)
+    # daily_store_sales.to_csv("store_sales/daily_store_sales.csv", index=False)
+    # st.success(f"daily_store_sales saved")
 
-    os.makedirs("product_sales", exist_ok=True)
-    for product, group in product_sales.groupby(column_mapping["product_column"]):
-        file_name = f"product_sales/{product}_sales.csv"
-        group.to_csv(file_name, index=False)
-        st.success(f"Saved: {file_name}")
+    # os.makedirs("product_sales", exist_ok=True)
+    # for product, group in product_sales.groupby(column_mapping["product_column"]):
+    #     file_name = f"product_sales/{product}_sales.csv"
+    #     group.to_csv(file_name, index=False)
+    #     st.success(f"Saved: {file_name}")
 
 
     # time.sleep(3)

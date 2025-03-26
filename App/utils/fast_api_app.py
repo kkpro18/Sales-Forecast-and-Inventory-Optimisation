@@ -25,6 +25,7 @@ class InputData(BaseModel):
     seasonality: Optional[conint(gt=0)] = None
     test_forecast_steps: Optional[conint(gt=0)] = None
     model_path : Optional[str] = None
+    product_name: Optional[str] = None
 
 
 ## Pre Processing
@@ -78,13 +79,16 @@ def fit_and_store_arima_model(received_data: InputData):
 
         arima_model = fit_arima_model(y_train)
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
-        arima_model_path = f'models/arima_{date_timestamp}.pkl'
+        if received_data.product_name is not None:
+            arima_model_path = f'models/arima_{received_data.product_name}_{date_timestamp}.pkl'
+        else:
+            arima_model_path = f'models/arima_{date_timestamp}.pkl'
         joblib.dump(arima_model, arima_model_path)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return {"arima_model_path": arima_model_path}
+    finally:
+        return {"arima_model_path": arima_model_path}
 
 def fit_and_store_sarima_model(received_data: InputData):
     try:
@@ -98,13 +102,16 @@ def fit_and_store_sarima_model(received_data: InputData):
 
         sarima_model = fit_sarima_model(y_train, seasonality)
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
-
-        sarima_model_path = f'models/sarima_{date_timestamp}.pkl'
+        if received_data.product_name is not None:
+            sarima_model_path = f'models/sarima_{received_data.product_name}_{date_timestamp}.pkl'
+        else:
+            sarima_model_path = f'models/sarima_{date_timestamp}.pkl'
         joblib.dump(sarima_model, sarima_model_path)
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    return {"sarima_model_path": sarima_model_path}
+    finally:
+        return {"sarima_model_path": sarima_model_path}
 
 
 # API Endpoint for fitting models in Parallel
@@ -129,7 +136,7 @@ def predict_train_test_api(received_data: InputData):
 
         if received_data.model_path is None:
             raise ValueError("Model path is None")
-        if (test_forecast_steps <= 0):
+        if test_forecast_steps <= 0:
             raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
 
         y_train_prediction = predict(model_path=model_path)
@@ -140,10 +147,10 @@ def predict_train_test_api(received_data: InputData):
         if y_test_prediction.isna().any():
             raise ValueError("y_test_prediction contains NaNs")
 
-        return {"y_train_prediction": y_train_prediction, "y_test_prediction": y_test_prediction}
-
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return {"y_train_prediction": y_train_prediction, "y_test_prediction": y_test_prediction}
 
 
 if __name__ == "__main__":

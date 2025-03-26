@@ -28,7 +28,7 @@ class SessionManager:
             return False
 
     @staticmethod
-    def fast_api(endpoint, **kwargs):
+    async def fast_api(endpoint, **kwargs):
         url = f'http://127.0.0.1:8000/{endpoint}'
         response = requests.post(
             url,

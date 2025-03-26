@@ -6,6 +6,9 @@ import streamlit as st
 from sklearn.metrics import root_mean_squared_error, r2_score
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error, mean_absolute_error
 import uuid
+
+from statsmodels.sandbox.regression.runmnl import exog_choice
+
 from App.utils.session_manager import SessionManager
 
 
@@ -41,6 +44,13 @@ def get_seasonality():
 
         return SessionManager.get_state('selected_seasonality')
 
+def add_exog_features(X_train, X_test):
+    pd.read_csv("App/data/MacroEconomicalData")
+
+    return X_train, X_test
+
+
+
 def fit_arima_model(y_train):
     st.write("ARIMA")
     arima_model = pm.auto_arima(y_train,
@@ -68,14 +78,26 @@ def fit_sarima_model(y_train, seasonality):
 
 # TBD
 
-def fit_sarimax_model():
-    pass
+def fit_sarimax_model(X_train, y_train, seasonality):
+
+    sarima_model = pm.auto_arima(y_train,
+                                 exogenous=X_train,
+                                 seasonal=True, m=seasonality,
+                                 trace=True,
+                                 error_action='ignore',  # don't want to know if an order does not work
+                                 suppress_warnings=True,  # don't want convergence warnings
+                                 stepwise=True,  # set to stepwise for quicker
+                                 )
+
+    # st.write(sarima_model.summary())
+    return sarima_model
 
 def fit_lstm_model():
     pass
 
 def fit_fb_prophet_model():
     pass
+
 def predict(model_path, forecast_periods=None):
     if model_path is None or len(model_path) == 0:
         st.error("No model path provided.")
@@ -85,13 +107,17 @@ def predict(model_path, forecast_periods=None):
         predictions = joblib.load(model_path).predict(n_periods=forecast_periods)  # Test / Predict Future
     return predictions
 
-def predict_store_wide_sales(X_train, X_test, y_train, y_test, column_mapping):
+async def predict_sales(data, column_mapping, product_name=None):
 
-    json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(),
-                                            seasonality=SessionManager.get_state('selected_seasonality'))
+    X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping, univariate=True)
+    X_train_exog, X_test_exog = add_exog_features()
+
+    json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
     if json_response.status_code == 200:
         arima_model_path = json_response.json()["arima"]["arima_model_path"]
         sarima_model_path = json_response.json()["sarima"]["sarima_model_path"]
+        sarimax_model_path = json_response.json()["sarimax"]["sarimax_model_path"]
+
     else:
         st.error(json_response.text)
 
@@ -104,12 +130,21 @@ def predict_store_wide_sales(X_train, X_test, y_train, y_test, column_mapping):
         st.error(json_response.text)
 
     # Predict SARIMA
-    json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-                                            model_path=sarima_model_path)
+    json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test), model_path=sarima_model_path)
 
     if json_response.status_code == 200:
         y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
         y_test_prediction_sarima = pd.Series(json_response.json()["y_test_prediction"])
+    else:
+        st.error(json_response.text)
+
+    # Predict SARIMAX
+    json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+                                            model_path=sarimax_model_path)
+
+    if json_response.status_code == 200:
+        y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
+        y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
     else:
         st.error(json_response.text)
 
@@ -123,6 +158,11 @@ def predict_store_wide_sales(X_train, X_test, y_train, y_test, column_mapping):
     st.write(joblib.load(sarima_model_path).summary())
     print_performance_metrics(sarima_model_path, y_train, y_train_prediction_sarima, y_test, y_test_prediction_sarima)
     plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima, column_mapping, univariate=True)
+
+    st.markdown("### SARIMAX Model:")
+    st.write(joblib.load(sarimax_model_path).summary())
+    print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarimax, y_test, y_test_prediction_sarimax)
+    plot_prediction(X_train_exog, y_train, X_test_exog, y_test, y_test_prediction_sarima, column_mapping, univariate=False)
 
 
 
