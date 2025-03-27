@@ -3,55 +3,6 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="/App/data/MacroEconomicalData/UK/UK_BoE_Bank_Rate.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/MacroEconomicalData/UK/UK_CPIH_250125.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/MacroEconomicalData/UK/UK_Internet_Sales_Ratio.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/MacroEconomicalData/UK/UK_RPI_250125.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/MacroEconomicalData/UK/UK_Unemployment_Rate.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/MacroEconomicalData/USA/USA_Unemployment_Rate_1948_2024.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/MacroEconomicalData/USA/USA_interest-rates-2000-2024.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
         <entry key="/App/data/kaggle.com:datasets:fahadrehman07:retail-transaction-dataset/Retail_Transaction_Dataset.csv">
           <value>
             <Attribute>

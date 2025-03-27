@@ -18,6 +18,8 @@ executor = ProcessPoolExecutor(max_workers=2) # do one less than the number of c
 class InputData(BaseModel):
     column_mapping: Optional[Dict[str, str]] = None
     data: Optional[List[Dict[str, Any]]] = None
+    train : Optional[List[Dict[str, Any]]] = None
+    test : Optional[List[Dict[str, Any]]] = None
     X_train: Optional[List[Dict[str, Any]]] = None
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
@@ -29,16 +31,6 @@ class InputData(BaseModel):
 
 
 ## Pre Processing
-@app.post("/format_dates_api")
-def format_dates_api(received_data: InputData):
-    try:
-        data = pd.DataFrame(received_data.data)
-        column_mapping = received_data.column_mapping
-
-        return format_dates(data, column_mapping).to_dict(orient="records")
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
 @app.post("/handle_outliers_api")
 def handle_outliers_api(received_data: InputData):
     try:
@@ -53,28 +45,43 @@ def train_test_split_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
-
-        X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping)
+        train, test = split_training_testing_data(data, column_mapping)
         return {
-            "X_train": X_train.to_dict(orient="records"),
-            "X_test": X_test.to_dict(orient="records"),
-            "y_train": y_train.to_dict(orient="records"),
-            "y_test": y_test.to_dict(orient="records")
+            "train": train.to_dict(orient="records"),
+            "test": test.to_dict(orient="records")
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @app.post("/handle_missing_values_api")
 def handle_missing_values_api(received_data: InputData):
     try:
-        X_train = pd.DataFrame(received_data.X_train)
-        X_test = pd.DataFrame(received_data.X_test)
+        train = pd.DataFrame(received_data.train)
+        test = pd.DataFrame(received_data.test)
+        column_mapping = received_data.column_mapping
 
-        y_train = pd.DataFrame(received_data.y_train)
-        y_test = pd.DataFrame(received_data.y_test)
+        train, test = handle_missing_values(train, test, column_mapping)
+
+        return {
+            "train": train.to_dict(orient="records"),
+            "test": test.to_dict(orient="records")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/format_dates_api")
+def format_dates_api(received_data: InputData):
+    try:
+        train = pd.DataFrame(received_data.train)
+        test = pd.DataFrame(received_data.test)
 
         column_mapping = received_data.column_mapping
 
-        return handle_missing_values(X_train, X_test, y_train, y_test, column_mapping).to_dict(orient="records")
+        train, test = format_dates(train, test, column_mapping)
+        return {
+            "train": train.to_dict(orient="records"),
+            "test": test.to_dict(orient="records")
+        }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

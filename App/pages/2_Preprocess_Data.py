@@ -20,19 +20,11 @@ if not SessionManager.is_there("data") or not SessionManager.is_there("column_ma
 else:
     data = SessionManager.get_state("data")
     column_mapping = SessionManager.get_state("column_mapping")
-
-    st.write("Processing Dates in the Correct Format")
     data_as_dictionary = data.to_dict(orient='records')
-
-
-    json_response = SessionManager.fast_api("format_dates_api", data = data_as_dictionary, column_mapping = column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Formatted Dates: No. Rows = {len(json_response.json())}")
-    else:
-        st.error(json_response.text)
+    st.success(f"Successfully loaded data: No. Rows = {len(data_as_dictionary)}")
 
     st.write("Handling Outliers")
-    json_response = SessionManager.fast_api("handle_outliers_api", data = json_response.json(), column_mapping = column_mapping)
+    json_response = SessionManager.fast_api("handle_outliers_api", data = data_as_dictionary, column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success(f"Successfully Handled Outliers: No. Rows = {len(json_response.json())}")
     else:
@@ -42,44 +34,51 @@ else:
     json_response = SessionManager.fast_api("train_test_split_api", data=json_response.json(),
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Split Dataset: = {len(json_response.json())}")
+        st.success(f"Successfully Split Dataset: = Train Size: {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
     else:
         st.error(json_response.text)
 
 
     st.write("Handling Missing Values ")
-    json_response = SessionManager.fast_api("handle_missing_values_api", data=json_response.json(),
-                                            column_mapping=column_mapping)
+    json_response = SessionManager.fast_api("handle_missing_values_api", train=json_response.json()['train'], test=json_response.json()['test'], column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Handled Missing Values: No. Rows = {len(json_response.json())}")
+        st.success(f"Successfully Handled Missing Values: Train Size: {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
+    else:
+        st.error(json_response.text)
+
+    st.write("Processing Dates in the Correct Format")
+
+    json_response = SessionManager.fast_api("format_dates_api", train=json_response.json()['train'], test=json_response.json()['test'], column_mapping=column_mapping)
+    if json_response.status_code == 200:
+        st.success(f"Successfully Formatted Dates: No. Rows = {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
+        train, test = pd.DataFrame(json_response.json()["train"]), pd.DataFrame(json_response.json()["test"])
     else:
         st.error(json_response.text)
 
     # SCALE LOG
 
-    print(json_response)
+    train_daily_store_sales = train.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
+    test_daily_store_sales = test.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
 
-    data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
-    data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)
-
-    daily_store_sales = data.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
-
-    product_sales = data.groupby(
-        [column_mapping["product_column"], column_mapping["date_column"]], as_index=False
-    ).agg(
+    train_product_sales = train.groupby([column_mapping["product_column"], column_mapping["date_column"]], as_index=False).agg(
         {
             column_mapping["price_column"]: 'mean',
             column_mapping["quantity_sold_column"]: 'sum'
         })
 
-    # for product, group in product_sales.groupby(column_mapping["product_column"]):
-    #     st.header(f"Product: {product}")
-    #     st.dataframe(group)
+    test_product_sales = test.groupby([column_mapping["product_column"], column_mapping["date_column"]], as_index=False).agg(
+        {
+            column_mapping["price_column"]: 'mean',
+            column_mapping["quantity_sold_column"]: 'sum'
+        })
 
     SessionManager.set_state("preprocess_data_complete", True)
-    # SessionManager.set_state("data", data)
-    SessionManager.set_state("daily_store_sales", daily_store_sales)
-    SessionManager.set_state("daily_product_grouped_sales", product_sales)
+
+    SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)
+    SessionManager.set_state("train_daily_product_grouped_sales", train_product_sales)
+
+    SessionManager.set_state("test_daily_store_sales", test_daily_store_sales)
+    SessionManager.set_state("test_daily_product_grouped_sales", test_product_sales)
 
     st.subheader("daily_store_sales")
     st.dataframe(SessionManager.get_state("daily_store_sales"))

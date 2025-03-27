@@ -6,21 +6,6 @@ from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 
-def format_dates(data, column_mapping):
-    date_column = column_mapping["date_column"]
-    st.toast(f"{len(data[date_column])} dates loaded")
-    data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
-    data[column_mapping["date_column"]] = data[column_mapping["date_column"]].dt.tz_localize(None)
-    data[date_column] = data[date_column].ffill()
-    if data[date_column].isna().sum() > 0:
-        st.warning("Missing values in the date column after processing")
-    # # Set the date column as the index
-    # data.index = data[date_column]
-    # data = data.drop(columns=[date_column], axis=1)
-    # data = data.sort_index()
-
-    st.success("Dates have been successfully formatted!")
-    return data
 
 def handle_outliers(data, column_mapping):
     outlier_indices = []
@@ -78,54 +63,68 @@ def split_training_testing_data(data, column_mapping):
     train = data[:train_size]
     test = data[train_size:]
 
-    X_train, X_test = train[features], test[features]
-    y_train, y_test = train[target], test[target]
     st.success("Data has been split into training and test set 70:30 Ratio")
 
-    return X_train, X_test, y_train, y_test
+    return train, test
 
-def handle_missing_values(X_train, X_test, y_train, y_test, column_mapping):
+def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
+    quantity_sold_column = column_mapping["quantity_sold_column"]
 
-    if X_train.isnull().values.any() or X_test.isnull().values.any() or y_train.isnull().values.any() or y_test.isnull().values.any():
+
+    if train.isnull().values.any() or test.isnull().values.any():
         # rows_with_missing_values = data[data.isnull().any(axis=1)]
         st.write("Data contains Missing or Null values")
 
-        if y_train.isnull().values.any() or y_test.isnull().values.any(): # if target column has missing values, no point imputing so drop
-            y_train_null_indices = y_train[y_train.isnull()].index
-            y_test_null_indices = y_test[y_test.isnull()].index
+        if train[quantity_sold_column].isnull().values.any() or test[quantity_sold_column].isnull().values.any(): # if target column has missing values, no point imputing so drop
+            train.dropna(subset=[quantity_sold_column], inplace=True)
+            test.dropna(subset=[quantity_sold_column], inplace=True)
 
-            X_train.drop(y_train_null_indices, inplace=True)
-            X_test.drop(y_test_null_indices, inplace=True)
-
-            y_train.drop(y_train_null_indices, inplace=True)
-            y_test.drop(y_test_null_indices, inplace=True)
-
-        product_impute = SimpleImputer(strategy='most_frequent')
-        price_impute = SimpleImputer(strategy='mean')
+        product_imputer = SimpleImputer(strategy='most_frequent')
+        price_imputer = SimpleImputer(strategy='mean')
 
         ct = ColumnTransformer(
             [
-                ("product_imputer", product_impute, [product_column]),
-                ("price_imputer", price_impute, [price_column])
+                ("product_imputer", product_imputer, [product_column]),
+                ("price_imputer", price_imputer, [price_column])
             ],
             verbose_feature_names_out=False,
-            remainder="passthrough")
-
+            remainder="passthrough",
+        )
         ct.set_output(transform="pandas")
-        ct.fit(X_train)
 
-        X_train = ct.transform(X_train)
-        X_test = ct.transform(X_test)
+        ct.fit(train)
 
-        if X_train.isnull().values.any() or X_test.isnull().values.any():
+        train = ct.transform(train)
+        test = ct.transform(test)
+
+        if train.isnull().values.any() or test.isnull().values.any():
             st.warning("Missing Values Still Exists :/")
-            st.dataframe(X_train[X_train.isnull().any(axis=1)])
-            st.dataframe(X_test[X_test.isnull().any(axis=1)])
+            st.dataframe(train[train.isnull().any(axis=1)])
+            st.dataframe(test[test.isnull().any(axis=1)])
         else:
             st.success("Missing Values Processed and Cleaned")
     else:
         st.success("Data contains no missing or null values")
 
-    return X_train, X_test, y_train, y_test
+    return train, test
+
+
+def format_dates(train, test, column_mapping):
+    date_column = column_mapping["date_column"]
+    st.toast(f"{len(train[date_column] + test[date_column])} dates loaded")
+    train[date_column] = pd.to_datetime(train[date_column], errors="coerce")
+    test[date_column] = pd.to_datetime(test[date_column], errors="coerce")
+
+    train[date_column] = train[date_column].dt.tz_localize(None)
+    test[date_column] = test[date_column].dt.tz_localize(None)
+
+    train[date_column] = train[date_column].ffill()
+    test[date_column] = test[date_column].ffill()
+
+    if train[date_column].isna().sum() + test[date_column].isna().sum() > 0:
+        st.warning("Missing values in the date column after processing")
+
+    st.success("Dates have been successfully formatted!")
+    return train, test
