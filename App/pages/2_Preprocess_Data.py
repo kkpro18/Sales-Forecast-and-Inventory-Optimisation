@@ -4,6 +4,8 @@ from App.utils.session_manager import SessionManager
 import pandas as pd
 import os
 
+from utils.data_preprocessing import format_dates
+
 st.set_page_config(
     page_title="Preprocess Data",
     page_icon="🧼",
@@ -42,18 +44,15 @@ else:
     st.write("Handling Missing Values ")
     json_response = SessionManager.fast_api("handle_missing_values_api", train=json_response.json()['train'], test=json_response.json()['test'], column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Handled Missing Values: Train Size: {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
+        train, test = pd.DataFrame(json_response.json()["train"]), pd.DataFrame(json_response.json()["test"])
+        st.success(f"Successfully Handled Missing Values: Train Size: {len(train)} Test Size: {len(test)}")
     else:
         st.error(json_response.text)
 
     st.write("Processing Dates in the Correct Format")
 
-    json_response = SessionManager.fast_api("format_dates_api", train=json_response.json()['train'], test=json_response.json()['test'], column_mapping=column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Formatted Dates: No. Rows = {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
-        train, test = pd.DataFrame(json_response.json()["train"]), pd.DataFrame(json_response.json()["test"])
-    else:
-        st.error(json_response.text)
+    train, test = format_dates(train, test, column_mapping)
+    st.success(f"Successfully Formatted Dates: No. Rows = {len(train)} Test Size: {len(test)}")
 
     # SCALE LOG
 
@@ -74,17 +73,30 @@ else:
 
     SessionManager.set_state("preprocess_data_complete", True)
 
+    st.markdown("## Preprocessed Data")
+    SessionManager.set_state("train", train)
+    SessionManager.set_state("test", test)
+
     SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)
     SessionManager.set_state("train_daily_product_grouped_sales", train_product_sales)
 
     SessionManager.set_state("test_daily_store_sales", test_daily_store_sales)
     SessionManager.set_state("test_daily_product_grouped_sales", test_product_sales)
 
-    st.subheader("daily_store_sales")
-    st.dataframe(SessionManager.get_state("daily_store_sales"))
+    st.markdown("### Train Data")
+    st.subheader("train_daily_store_sales")
+    st.dataframe(SessionManager.get_state("train_daily_store_sales"))
 
-    st.subheader("product_sales")
-    st.dataframe(SessionManager.get_state("daily_product_grouped_sales"))
+    st.subheader("train_daily_product_grouped_sales")
+    st.dataframe(SessionManager.get_state("train_daily_product_grouped_sales"))
+
+    st.markdown("### Test Data")
+    st.subheader("test_daily_store_sales")
+    st.dataframe(SessionManager.get_state("test_daily_store_sales"))
+
+    st.subheader("test_daily_product_grouped_sales")
+    st.dataframe(SessionManager.get_state("test_daily_product_grouped_sales"))
+
     st.balloons()
 
     # os.makedirs("store_sales", exist_ok=True)

@@ -59,9 +59,10 @@ def split_training_testing_data(data, column_mapping):
 
     # 70 : 30 split
     train_size = int(len(data) * 0.70)
+    end_train_date = data.iloc[train_size][column_mapping["date_column"]]
 
-    train = data[:train_size]
-    test = data[train_size:]
+    train = data[data["date"] < end_train_date]
+    test = data[data["date"] >= end_train_date]
 
     st.success("Data has been split into training and test set 70:30 Ratio")
 

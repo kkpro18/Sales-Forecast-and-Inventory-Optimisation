@@ -81,9 +81,15 @@ def predict(model_path, forecast_periods=None):
         predictions = joblib.load(model_path).predict(n_periods=forecast_periods)  # Test / Predict Future
     return predictions
 
-async def predict_sales(data, column_mapping, product_name=None):
+async def predict_sales(train, test, column_mapping, product_name=None, multivariate=False):
+    if multivariate:
+        features = column_mapping.copy()
+        features.pop("quantity_sold_column")
+        features = features.values()
+    else:
+        features = column_mapping["date_column"]
 
-    X_train, X_test, y_train, y_test = split_training_testing_data(data, column_mapping, univariate=True)
+    X_train, X_test, y_train, y_test = train[features], test[features], train[column_mapping["quantity_sold_column"]], test[column_mapping["quantity_sold_column"]]
     # X_train_exog, X_test_exog = add_exog_features()
 
     json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
