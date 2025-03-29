@@ -38,7 +38,56 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_BoE_Bank_Rate.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_CPIH_250125.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_Internet_Sales_Ratio.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_RPI_250125.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_Unemployment_Rate.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/USA/USA_Unemployment_Rate_1948_2024.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/AppMaintenance/raw_macro_economical_data/USA/USA_interest-rates-2000-2024.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

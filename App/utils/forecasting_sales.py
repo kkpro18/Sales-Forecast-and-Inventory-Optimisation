@@ -88,8 +88,9 @@ async def predict_sales(train, test, column_mapping, product_name=None, multivar
         features = features.values()
     else:
         features = column_mapping["date_column"]
+    target = column_mapping["quantity_sold_column"]
 
-    X_train, X_test, y_train, y_test = train[features], test[features], train[column_mapping["quantity_sold_column"]], test[column_mapping["quantity_sold_column"]]
+    X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
     # X_train_exog, X_test_exog = add_exog_features()
 
     json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
@@ -109,7 +110,7 @@ async def predict_sales(train, test, column_mapping, product_name=None, multivar
             st.write(joblib.load(arima_model_path).summary())
             print_performance_metrics(arima_model_path, y_train, y_train_prediction_arima, y_test,
                                       y_test_prediction_arima)
-            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima, column_mapping, univariate=True)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima, column_mapping)
         else:
             st.error(json_response.text)
 
@@ -125,7 +126,7 @@ async def predict_sales(train, test, column_mapping, product_name=None, multivar
             st.write(joblib.load(sarima_model_path).summary())
             print_performance_metrics(sarima_model_path, y_train, y_train_prediction_sarima, y_test,
                                       y_test_prediction_sarima)
-            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima, column_mapping, univariate=True)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima, column_mapping)
         else:
             st.error(json_response.text)
 
@@ -175,28 +176,24 @@ def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y
         else:
             right.metric(label=metric, value=round(value, 4))
 
-def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping, univariate=False):
-    if univariate:
-        X_train_dates = X_train
-        X_test_dates = X_test
-    else:
-        X_train_dates = X_train[column_mapping["date_column"]]
-        X_test_dates = X_test[column_mapping["date_column"]]
-
+def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping, multivariate=False):
+    if multivariate:
+        X_train = X_train[column_mapping["date_column"]]
+        X_test = X_test[column_mapping["date_column"]]
     fig = go.Figure()
-    fig.add_trace(go.Scatter(x=X_train_dates, y=y_train, mode='lines', name='Training Data', line=dict(color='red')))
-    fig.add_trace(go.Scatter(x=X_test_dates, y=y_test, mode='lines', name='Testing Data', line=dict(color='green')))
-    fig.add_trace(go.Scatter(x=X_test_dates, y=y_test_prediction, mode='lines', name='Predicted Sales', line=dict(color='blue')))
+    fig.add_trace(go.Scatter(x=X_train, y=y_train, mode='lines', name='Training Data', line=dict(color='red')))
+    fig.add_trace(go.Scatter(x=X_test, y=y_test, mode='lines', name='Testing Data', line=dict(color='green')))
+    fig.add_trace(go.Scatter(x=X_test, y=y_test_prediction, mode='lines', name='Predicted Sales', line=dict(color='blue')))
 
     frames = [
         go.Frame(
             data=[
-                go.Scatter(x=X_train_dates, y=y_train, mode='lines', line=dict(color='red')),  # Static
-                go.Scatter(x=X_test_dates[:i + 1], y=y_test[:i + 1], mode='lines', line=dict(color='green')),
-                go.Scatter(x=X_test_dates[:i + 1], y=y_test_prediction[:i + 1], mode='lines', line=dict(color='blue'))
+                go.Scatter(x=X_train, y=y_train, mode='lines', line=dict(color='red')),  # Static
+                go.Scatter(x=X_test[:i + 1], y=y_test[:i + 1], mode='lines', line=dict(color='green')),
+                go.Scatter(x=X_test[:i + 1], y=y_test_prediction[:i + 1], mode='lines', line=dict(color='blue'))
             ]
         )
-        for i in range(len(X_test_dates))
+        for i in range(len(X_test))
     ]
 
     fig.frames = frames

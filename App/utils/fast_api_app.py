@@ -45,6 +45,7 @@ def train_test_split_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
+
         train, test = split_training_testing_data(data, column_mapping)
         return {
             "train": train.to_dict(orient="records"),

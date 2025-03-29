@@ -6,8 +6,7 @@ def read_uploaded_data(uploaded_dataset):
     if uploaded_dataset.name.endswith(".csv"):
         return pd.read_csv(uploaded_dataset, encoding="unicode_escape")
     elif uploaded_dataset.name.endswith(".xlsx"):
-        # elif uploaded_file.name.endswith(".xlsx"):
-        return pd.read_excel(uploaded_dataset, encoding="unicode_escape")
+        return pd.read_excel(uploaded_dataset)
     return None
 
 def map_columns_to_variables(data):

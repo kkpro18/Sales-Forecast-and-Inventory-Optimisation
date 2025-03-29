@@ -51,20 +51,24 @@ def handle_outliers(data, column_mapping):
 
 
 def split_training_testing_data(data, column_mapping):
-    features = column_mapping.copy()
-    features.pop("quantity_sold_column")
-    features = features.values()
-
-    target = column_mapping["quantity_sold_column"]
-
     # 70 : 30 split
+    # convert date column to datetime
+    # data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
+    date_column = column_mapping["date_column"]
+    product_column = column_mapping["product_column"]
+    data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
+    data[date_column] = data[date_column].dt.tz_localize(None)
+    data[date_column] = data[date_column].ffill()
+
+    data.sort_values(by=date_column, ascending=True, inplace=True)
+    data.reset_index(drop=True, inplace=True)
     train_size = int(len(data) * 0.70)
-    end_train_date = data.iloc[train_size][column_mapping["date_column"]]
+    end_train_date = data.iloc[train_size][date_column]
+    st.write(f"Training End Date : {end_train_date}")
 
-    train = data[data["date"] < end_train_date]
-    test = data[data["date"] >= end_train_date]
-
-    st.success("Data has been split into training and test set 70:30 Ratio")
+    train = data[data[date_column] < end_train_date]
+    test = data[data[date_column] > end_train_date]
+    test = test[test[product_column].isin(train[product_column].unique())]
 
     return train, test
 
@@ -114,7 +118,6 @@ def handle_missing_values(train, test, column_mapping):
 
 def format_dates(train, test, column_mapping):
     date_column = column_mapping["date_column"]
-    st.toast(f"{len(train[date_column] + test[date_column])} dates loaded")
     train[date_column] = pd.to_datetime(train[date_column], errors="coerce")
     test[date_column] = pd.to_datetime(test[date_column], errors="coerce")
 
