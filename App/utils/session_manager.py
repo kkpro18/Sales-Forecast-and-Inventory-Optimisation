@@ -39,7 +39,7 @@ class SessionManager:
     @staticmethod
     def cleanup():
         # file_paths = ["models", "product_sales", "store_sales"] # cleans up space
-        file_paths = ["product_sales", "store_sales"]  # cleans up space
+        file_paths = ["product_sales", "store_sales", "models"]  # cleans up space
         for path in file_paths:
             if os.path.exists(path):
                 shutil.rmtree(path) # remove directory
