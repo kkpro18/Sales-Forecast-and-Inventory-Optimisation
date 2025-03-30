@@ -1,4 +1,5 @@
 import joblib
+import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pmdarima as pm
@@ -108,6 +109,7 @@ async def predict_sales(train, test, column_mapping, product_name=None, multivar
 
             st.markdown("### ARIMA Model:")
             st.write(joblib.load(arima_model_path).summary())
+
             print_performance_metrics(arima_model_path, y_train, y_train_prediction_arima, y_test,
                                       y_test_prediction_arima)
             plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima, column_mapping)

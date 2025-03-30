@@ -1,5 +1,6 @@
 import time
 
+import numpy as np
 import streamlit as st
 from App.utils.session_manager import SessionManager
 from App.utils.data_handling import read_uploaded_data, map_columns_to_variables
@@ -40,7 +41,6 @@ if uploaded_dataset is not None:
     st.write(column_mapping)
     if SessionManager.is_there("data") and SessionManager.is_there("column_mapping"):
         SessionManager.set_state("data", data[column_mapping.values()])
-
 
     st.page_link("pages/2_Preprocess_Data.py", label="👈 First Preprocess Sales Data", icon="🧼")
 

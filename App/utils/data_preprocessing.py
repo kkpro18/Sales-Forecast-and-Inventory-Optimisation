@@ -6,6 +6,18 @@ from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 
+from App.utils.session_manager import SessionManager
+
+def transform_data(data, column_mapping):
+    sales_column = column_mapping["quantity_sold_column"]
+    if data[sales_column].skew() > 1:
+        SessionManager.set_state("is_log_transformed", True)
+        data[sales_column] = np.log1p(data[sales_column])
+        st.success("Sales Column has been transformed using log transformation as it is skewed")
+    else:
+        st.success("Sales Column is not skewed, no transformation applied")
+    return data
+
 
 def handle_outliers(data, column_mapping):
     outlier_indices = []
@@ -14,8 +26,8 @@ def handle_outliers(data, column_mapping):
     # consider pricing as possibly typos
 
     if (data[quantity_sold_column] < 0).sum() > 0:
-        st.session_state.data = data[data[quantity_sold_column] >= 0].copy()
-        data = data[data[quantity_sold_column] >= 0].copy()
+        SessionManager.set_state("data", data[data[quantity_sold_column] >= 0].copy())
+        data = SessionManager.get_state("data")
 
     for product, product_group in data.groupby(product_column):
         quartile_1 = product_group[quantity_sold_column].quantile(0.25)
@@ -72,6 +84,26 @@ def split_training_testing_data(data, column_mapping):
 
     return train, test
 
+def encode_product_column(train, test, column_mapping):
+    product_column = column_mapping["product_column"]
+    quantity_sold_column = column_mapping["quantity_sold_column"]
+
+    target_encoder = TargetEncoder(cols=product_column)
+
+    target_encoder.fit(train[product_column], train[quantity_sold_column])
+
+    train["product_encoded"] = target_encoder.transform(train[product_column])
+    test["product_encoded"] = target_encoder.transform(test[product_column])
+
+    train_product_encoder_map = dict(zip(train[product_column], train['product_encoded']))
+    test_product_encoder_map = dict(zip(test[product_column], test['product_encoded']))
+
+    SessionManager.set_state("train_product_encoder_map", train_product_encoder_map)
+    SessionManager.set_state("test_product_encoder_map", test_product_encoder_map)
+
+    # st.write("Target Encoded Result ", uploaded_dataset.sort_values(units_sold_column, ascending=True).head(5))
+    st.success("Product Column has been successfully encoded")
+    return train, test
 def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
@@ -108,13 +140,10 @@ def handle_missing_values(train, test, column_mapping):
             st.warning("Missing Values Still Exists :/")
             st.dataframe(train[train.isnull().any(axis=1)])
             st.dataframe(test[test.isnull().any(axis=1)])
-        else:
-            st.success("Missing Values Processed and Cleaned")
-    else:
-        st.success("Data contains no missing or null values")
 
     return train, test
 
+# scale exog X only, robust scaler to prevent outliers, MINMAX for fixed range, standard scaler for normal distribution - prioritise standard scaler mostly
 
 def format_dates(train, test, column_mapping):
     date_column = column_mapping["date_column"]
@@ -130,5 +159,15 @@ def format_dates(train, test, column_mapping):
     if train[date_column].isna().sum() + test[date_column].isna().sum() > 0:
         st.warning("Missing values in the date column after processing")
 
-    st.success("Dates have been successfully formatted!")
     return train, test
+
+def fill_missing_date_range(group, column_mapping):
+    product_date_range = pd.date_range(start=group[column_mapping["date_column"]].min(),
+                                       end=group[column_mapping["date_column"]].max(), freq='D')
+    product_daily_dates_df = pd.DataFrame(product_date_range, columns=[column_mapping["date_column"]])
+    group = pd.merge(product_daily_dates_df, group, on=column_mapping["date_column"], how='left')
+    group[column_mapping["quantity_sold_column"]] = group[column_mapping["quantity_sold_column"]].fillna(0)
+    group[column_mapping["price_column"]] = group[column_mapping["price_column"]].fillna(0)
+    group[column_mapping["product_column"]] = group[column_mapping["product_column"]].ffill()
+
+    return group

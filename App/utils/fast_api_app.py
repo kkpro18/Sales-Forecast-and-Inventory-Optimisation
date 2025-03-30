@@ -6,9 +6,10 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
-from App.utils.data_preprocessing import format_dates, handle_outliers, split_training_testing_data, handle_missing_values
+from App.utils.data_preprocessing import transform_data, handle_outliers, format_dates, split_training_testing_data, encode_product_column, handle_missing_values
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, predict
 from datetime import datetime
+from App.utils.session_manager import SessionManager
 
 "uvicorn App.utils.fast_api_app:app --port 8000 --reload"
 
@@ -31,6 +32,16 @@ class InputData(BaseModel):
 
 
 ## Pre Processing
+
+@app.post("/transform_data_api")
+def transform_data_api(received_data: InputData):
+    try:
+        data = pd.DataFrame(received_data.data)
+        column_mapping = received_data.column_mapping
+
+        return transform_data(data, column_mapping).to_dict(orient="records")
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 @app.post("/handle_outliers_api")
 def handle_outliers_api(received_data: InputData):
     try:
@@ -47,6 +58,23 @@ def train_test_split_api(received_data: InputData):
         column_mapping = received_data.column_mapping
 
         train, test = split_training_testing_data(data, column_mapping)
+        return {
+            "train": train.to_dict(orient="records"),
+            "test": test.to_dict(orient="records")
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post("/encode_product_column_call")
+def encode_product_column_call(received_data: InputData):
+    try:
+        train = pd.DataFrame(received_data.train)
+        test = pd.DataFrame(received_data.test)
+        column_mapping = received_data.column_mapping
+
+        train, test = encode_product_column(train, test, column_mapping)
+
         return {
             "train": train.to_dict(orient="records"),
             "test": test.to_dict(orient="records")
@@ -159,6 +187,10 @@ def predict_train_test_api(received_data: InputData):
 
         y_train_prediction = predict(model_path=model_path)
         y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
+
+        if SessionManager.get_state("is_log_transformed"):
+            y_train_prediction = np.expm1(y_train_prediction)
+            y_test_prediction = np.expm1(y_test_prediction)
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")
