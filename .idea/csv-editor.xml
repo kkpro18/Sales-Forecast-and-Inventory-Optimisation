@@ -101,6 +101,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/Z_Experiments/1_datasets/kaggle.com:datasets:tanayatipre:store-sales-forecasting-dataset/stores_sales_forecasting.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
       </map>
     </option>
   </component>

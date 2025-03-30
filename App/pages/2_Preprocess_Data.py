@@ -1,10 +1,8 @@
-import time
 import streamlit as st
 from App.utils.session_manager import SessionManager
 import pandas as pd
-import os
 
-from App.utils.data_preprocessing import format_dates, fill_missing_date_range
+from App.utils.data_preprocessing import format_dates, fill_missing_date_range, convert_to_dict
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -22,8 +20,11 @@ if not SessionManager.is_there("data") or not SessionManager.is_there("column_ma
 else:
     data = SessionManager.get_state("data")
     column_mapping = SessionManager.get_state("column_mapping")
-    data_as_dictionary = data.to_dict(orient='records')
+    data_as_dictionary = convert_to_dict(data)
     st.success(f"Successfully loaded data No. Rows: {len(data_as_dictionary)}")
+    # check if data as dictionary contains anything invalid for json
+    # st.write(data_as_dictionary)
+
 
     st.write("Applying Transformation to the Data")
     json_response = SessionManager.fast_api("transform_data_api", data=data_as_dictionary, column_mapping=column_mapping)

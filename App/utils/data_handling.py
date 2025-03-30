@@ -1,7 +1,7 @@
 import pandas as pd
 import streamlit as st
 from utils.session_manager import SessionManager
-import chardet
+
 
 def read_uploaded_data(uploaded_dataset):
 
@@ -13,6 +13,7 @@ def read_uploaded_data(uploaded_dataset):
     elif uploaded_dataset.name.endswith(".xlsx"):
         return pd.read_excel(uploaded_dataset, sheet_name=0)
     return None
+
 
 def map_columns_to_variables(data):
     columns = data.columns.tolist()

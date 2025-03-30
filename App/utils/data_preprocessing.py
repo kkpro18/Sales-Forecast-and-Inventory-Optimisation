@@ -2,11 +2,19 @@ import numpy as np
 import streamlit as st
 import pandas as pd
 from category_encoders import TargetEncoder
-from scipy.stats import zscore
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
-
 from App.utils.session_manager import SessionManager
+
+
+def convert_to_dict(data):
+    # converts to dicts while fixes any issues that causes json errors e.g NaN, Infinity, -Infinity, trailing 0s.
+    data.replace(pd.NaT, None, inplace=True)
+    data.replace([np.nan], None, inplace=True)
+    data.replace([np.inf, -np.inf], None, inplace=True)
+
+    return data.to_dict(orient='records')
+
 
 def transform_data(data, column_mapping):
     sales_column = column_mapping["quantity_sold_column"]
@@ -26,7 +34,7 @@ def handle_outliers(data, column_mapping):
     # consider pricing as possibly typos
 
     if (data[quantity_sold_column] < 0).sum() > 0:
-        SessionManager.set_state("data", data[data[quantity_sold_column] >= 0].copy())
+        SessionManager.set_state("data", data[data[quantity_sold_column] >= 0].reset_index(drop=True).copy())
         data = SessionManager.get_state("data")
 
     for product, product_group in data.groupby(product_column):
@@ -37,26 +45,34 @@ def handle_outliers(data, column_mapping):
         iqr_outlier_indices = product_group[(product_group[quantity_sold_column] < quartile_1 - threshold * inter_quartile_range)
                                             |
                                             (product_group[quantity_sold_column] > quartile_3 + threshold * inter_quartile_range)].index
-        z_scores = np.abs(zscore(product_group[quantity_sold_column], nan_policy="omit"))  # try Median Absolute Deviation (MAD)
-        z_score_outlier_indices = product_group[abs(z_scores) > 1.5].index  # test different thresholds
+        # median absolute deviation to handle outliers
+
+        median_sales = np.median(product_group[quantity_sold_column])
+        mad = np.median(np.abs(product_group[quantity_sold_column] - median_sales))
+        if mad == 0:  # prevent division by zero
+            mad_outlier_indices = np.zeros(len(product_group[quantity_sold_column]), dtype=bool)
+        else:
+            modified_z_score = 0.6745 * (product_group[quantity_sold_column] - median_sales) / mad
+            mad_outlier_indices = np.where(np.abs(modified_z_score) > 3.5)[0]
 
         outlier_indices.extend(iqr_outlier_indices)
-        outlier_indices.extend(z_score_outlier_indices)
+        outlier_indices.extend(mad_outlier_indices)
 
     outlier_indices = list(set(outlier_indices))
     outlier_values = data[quantity_sold_column].loc[outlier_indices]
 
     st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
     st.write(f"Total No. Values in Sales Column {data[quantity_sold_column].shape[0]}")
-    outlier_proportion = float("%.2f" % (outlier_values.shape[0] / data[quantity_sold_column].shape[0] * 100))
+    outlier_proportion = round(outlier_values.shape[0] / data[quantity_sold_column].shape[0] * 100,2)
     st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
 
-    if outlier_proportion > 10:  # greater than 10% of dataset
-        data.loc[outlier_indices, quantity_sold_column] = np.nan
-        data[quantity_sold_column] = data.groupby(product_column)[quantity_sold_column].transform(lambda x: round(x.fillna(x.mean())))
+    if outlier_proportion >= 20:
+        # since outliers are more than 15% of the data, we will keep mean of the products for each product
+        data.loc[outlier_indices, quantity_sold_column] = None # outliers are removed prior to calculating mean to prevent bias
+        data[quantity_sold_column] = data.groupby(product_column)[quantity_sold_column].transform('mean').round()
         st.success(f"{outlier_values.shape[0]} outliers have been processed")
     else:
-        data = data.drop(outlier_indices)  # indexing may be a categorical or dates, so this would be an index safe method
+        data = data.drop(outlier_indices)
         st.success(f"{outlier_values.shape[0]} outliers have been removed")
 
     return data
@@ -84,6 +100,7 @@ def split_training_testing_data(data, column_mapping):
 
     return train, test
 
+
 def encode_product_column(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     quantity_sold_column = column_mapping["quantity_sold_column"]
@@ -104,6 +121,8 @@ def encode_product_column(train, test, column_mapping):
     # st.write("Target Encoded Result ", uploaded_dataset.sort_values(units_sold_column, ascending=True).head(5))
     st.success("Product Column has been successfully encoded")
     return train, test
+
+
 def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
@@ -144,7 +163,6 @@ def handle_missing_values(train, test, column_mapping):
     return train, test
 
 # scale exog X only, robust scaler to prevent outliers, MINMAX for fixed range, standard scaler for normal distribution - prioritise standard scaler mostly
-
 def format_dates(train, test, column_mapping):
     date_column = column_mapping["date_column"]
     train[date_column] = pd.to_datetime(train[date_column], errors="coerce")
@@ -160,6 +178,7 @@ def format_dates(train, test, column_mapping):
         st.warning("Missing values in the date column after processing")
 
     return train, test
+
 
 def fill_missing_date_range(group, column_mapping):
     product_date_range = pd.date_range(start=group[column_mapping["date_column"]].min(),
