@@ -48,10 +48,20 @@ def fit_sarima_model(y_train, seasonality):
                                  stepwise=True,  # set to stepwise for quicker
     )
 
-    # st.write(sarima_model.summary())
     return sarima_model
 
 # TBD
+
+def fit_arimax_model(X_train, y_train):
+    arimax_model = pm.auto_arima(y_train,
+                                 exogenous=X_train,
+                                 seasonal=False, trace=True,
+                                 error_action='ignore',  # don't want to know if an order does not work
+                                 suppress_warnings=True,  # don't want convergence warnings
+                                 stepwise=True,  # set to stepwise for quicker
+                                 )
+
+    return arimax_model
 
 def fit_sarimax_model(X_train, y_train, seasonality):
 
@@ -64,7 +74,6 @@ def fit_sarimax_model(X_train, y_train, seasonality):
                                  stepwise=True,  # set to stepwise for quicker
                                  )
 
-    # st.write(sarima_model.summary())
     return sarima_model
 
 def fit_lstm_model():
@@ -82,17 +91,12 @@ def predict(model_path, forecast_periods=None):
         predictions = joblib.load(model_path).predict(n_periods=forecast_periods)  # Test / Predict Future
     return predictions
 
-async def predict_sales(train, test, column_mapping, product_name=None, multivariate=False):
-    if multivariate:
-        features = column_mapping.copy()
-        features.pop("quantity_sold_column")
-        features = features.values()
-    else:
-        features = column_mapping["date_column"]
+async def predict_sales_univariate(train, test, column_mapping, product_name=None):
+
+    features = column_mapping["date_column"]
     target = column_mapping["quantity_sold_column"]
 
     X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
-    # X_train_exog, X_test_exog = add_exog_features()
 
     json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
     if json_response.status_code == 200:
@@ -154,6 +158,70 @@ async def predict_sales(train, test, column_mapping, product_name=None, multivar
     # plot_prediction(X_train_exog, y_train, X_test_exog, y_test, y_test_prediction_sarima, column_mapping, univariate=False)
 
 
+async def predict_sales_multivariate(train, test, column_mapping, product_name=None):
+    features = train.columns.tolist()
+    features.remove(column_mapping["quantity_sold_column"], column_mapping["date_column"])
+    target = column_mapping["quantity_sold_column"]
+
+    X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
+
+    json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(),
+                                            seasonality=SessionManager.get_state('selected_seasonality'),
+                                            product_name=product_name)
+    if json_response.status_code == 200:
+
+        arimax_model_path = json_response.json()["arima"]["arima_model_path"]
+        sarimax_model_path = json_response.json()["sarima"]["sarima_model_path"]
+
+        # Predict ARIMA
+        json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+                                                model_path=arimax_model_path)
+        if json_response.status_code == 200:
+            y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
+
+            st.markdown("### ARIMAX Model:")
+            st.write(joblib.load(arimax_model_path).summary())
+
+            print_performance_metrics(arimax_model_path, y_train, y_train_prediction_arima, y_test,
+                                      y_test_prediction_arima)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima, column_mapping)
+        else:
+            st.error(json_response.text)
+
+        # Predict SARIMA
+        json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+                                                model_path=sarimax_model_path)
+
+        if json_response.status_code == 200:
+            y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_sarima = pd.Series(json_response.json()["y_test_prediction"])
+
+            st.markdown("### SARIMAX Model:")
+            st.write(joblib.load(sarimax_model_path).summary())
+            print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarima, y_test,
+                                      y_test_prediction_sarima)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima, column_mapping)
+        else:
+            st.error(json_response.text)
+
+    else:
+        st.error(json_response.text)
+
+    # Predict SARIMAX
+    # json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+    #                                         model_path=sarimax_model_path)
+    #
+    # if json_response.status_code == 200:
+    #     y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
+    #     y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
+    # else:
+    #     st.error(json_response.text)
+
+    # st.markdown("### SARIMAX Model:")
+    # st.write(joblib.load(sarimax_model_path).summary())
+    # print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarimax, y_test, y_test_prediction_sarimax)
+    # plot_prediction(X_train_exog, y_train, X_test_exog, y_test, y_test_prediction_sarima, column_mapping, univariate=False)
 
 
 def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y_test_prediction):

@@ -5,6 +5,7 @@ from category_encoders import TargetEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from App.utils.session_manager import SessionManager
+from App.utils.data_handling import read_file
 
 
 def convert_to_dict(data):
@@ -122,7 +123,6 @@ def encode_product_column(train, test, column_mapping):
     st.success("Product Column has been successfully encoded")
     return train, test
 
-
 def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
@@ -163,6 +163,18 @@ def handle_missing_values(train, test, column_mapping):
     return train, test
 
 # scale exog X only, robust scaler to prevent outliers, MINMAX for fixed range, standard scaler for normal distribution - prioritise standard scaler mostly
+
+def fill_missing_date_range_product_group(group, column_mapping):
+    product_date_range = pd.date_range(start=group[column_mapping["date_column"]].min(),
+                                       end=group[column_mapping["date_column"]].max(), freq='D')
+    product_daily_dates_df = pd.DataFrame(product_date_range, columns=[column_mapping["date_column"]])
+    group = pd.merge(product_daily_dates_df, group, on=column_mapping["date_column"], how='left')
+    group[column_mapping["quantity_sold_column"]] = group[column_mapping["quantity_sold_column"]].fillna(0)
+    group[column_mapping["price_column"]] = group[column_mapping["price_column"]].ffill()
+    group[column_mapping["product_column"]] = group[column_mapping["product_column"]].ffill()
+
+    return group
+
 def format_dates(train, test, column_mapping):
     date_column = column_mapping["date_column"]
     train[date_column] = pd.to_datetime(train[date_column], errors="coerce")
@@ -171,22 +183,107 @@ def format_dates(train, test, column_mapping):
     train[date_column] = train[date_column].dt.tz_localize(None)
     test[date_column] = test[date_column].dt.tz_localize(None)
 
-    train[date_column] = train[date_column].ffill()
-    test[date_column] = test[date_column].ffill()
+    # train[date_column] = train[date_column].ffill()
+    # test[date_column] = test[date_column].ffill()
+    train.dropna(subset=[date_column], inplace=True)
+    test.dropna(subset=[date_column], inplace=True)
 
     if train[date_column].isna().sum() + test[date_column].isna().sum() > 0:
         st.warning("Missing values in the date column after processing")
 
-    return train, test
+    # train daily sales
+    # groups by each date and sums them
+    train_daily_store_sales = train.groupby(column_mapping["date_column"], as_index=False).agg(
+        {column_mapping["quantity_sold_column"]: 'sum'})
+    train_date_range = pd.date_range(start=train_daily_store_sales[column_mapping["date_column"]].min(), end=train_daily_store_sales[column_mapping["date_column"]].max(), freq='D')
+    train_daily_dates_df = pd.DataFrame(train_date_range, columns=[column_mapping["date_column"]])
+    train_daily_store_sales = pd.merge(train_daily_dates_df, train_daily_store_sales, on=column_mapping["date_column"],  how='left')
+    # fills in missing columns from new addded dates
+    train_daily_store_sales[column_mapping["quantity_sold_column"]] = train_daily_store_sales[column_mapping["quantity_sold_column"]].fillna(0)
+
+    train_daily_store_sales.reset_index(drop=True, inplace=True)
+
+    # test daily sales
+    # groups by each date and sums them
+    test_daily_store_sales = test.groupby(column_mapping["date_column"], as_index=False).agg(
+        {column_mapping["quantity_sold_column"]: 'sum'})
+    test_date_range = pd.date_range(start=test_daily_store_sales[column_mapping["date_column"]].min(), end=test_daily_store_sales[column_mapping["date_column"]].max(), freq='D')
+    test_daily_dates_df = pd.DataFrame(test_date_range, columns=[column_mapping["date_column"]])
+    test_daily_store_sales = pd.merge(test_daily_dates_df, test_daily_store_sales, on=column_mapping["date_column"], how='left')
+    # fills in missing columns from new addded dates
+    test_daily_store_sales[column_mapping["quantity_sold_column"]] = test_daily_store_sales[column_mapping["quantity_sold_column"]].fillna(0)
+
+    test_daily_store_sales.reset_index(drop=True, inplace=True)
 
 
-def fill_missing_date_range(group, column_mapping):
-    product_date_range = pd.date_range(start=group[column_mapping["date_column"]].min(),
-                                       end=group[column_mapping["date_column"]].max(), freq='D')
-    product_daily_dates_df = pd.DataFrame(product_date_range, columns=[column_mapping["date_column"]])
-    group = pd.merge(product_daily_dates_df, group, on=column_mapping["date_column"], how='left')
-    group[column_mapping["quantity_sold_column"]] = group[column_mapping["quantity_sold_column"]].fillna(0)
-    group[column_mapping["price_column"]] = group[column_mapping["price_column"]].fillna(0)
-    group[column_mapping["product_column"]] = group[column_mapping["product_column"]].ffill()
+    # train product specific sales
+    train_product_sales = train.groupby([column_mapping["product_column"], column_mapping["date_column"]],
+                                        as_index=False).agg(
+        {
+            column_mapping["price_column"]: 'mean',
+            column_mapping["quantity_sold_column"]: 'sum'
+        })
+    train_product_sales = train_product_sales.groupby(column_mapping["product_column"]).apply(lambda group: fill_missing_date_range_product_group(group, column_mapping))
+    train_product_sales.reset_index(drop=True, inplace=True)
 
-    return group
+    # test product specific sales
+    test_product_sales = test.groupby([column_mapping["product_column"], column_mapping["date_column"]],
+                                      as_index=False).agg(
+        {
+            column_mapping["price_column"]: 'mean',
+            column_mapping["quantity_sold_column"]: 'sum'
+        })
+    test_product_sales = test_product_sales.groupby(column_mapping["product_column"]).apply(lambda group: fill_missing_date_range_product_group(group, column_mapping))
+    test_product_sales.reset_index(drop=True, inplace=True)
+
+
+    return train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales
+
+
+def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales, column_mapping):
+    if selected_region == "UK":
+        exogenous_data = read_file("App/AppMaintenance/raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv")
+        exog_date_column = "Date"
+        exogenous_data[exog_date_column] = pd.to_datetime(exogenous_data[exog_date_column], format="%Y-%m-%d",
+                                                          errors="coerce")
+        exogenous_data[exog_date_column] = exogenous_data[exog_date_column].dt.tz_localize(None)
+        exogenous_data = exogenous_data.rename(columns={exog_date_column: column_mapping["date_column"]})
+
+        train_daily_store_sales_with_exog = pd.merge(train_daily_store_sales, exogenous_data,
+                                                     on=column_mapping["date_column"], how='left')
+        test_daily_store_sales_with_exog = pd.merge(test_daily_store_sales, exogenous_data,
+                                                    on=column_mapping["date_column"], how='left')
+        train_product_sales_with_exog = pd.merge(train_product_sales, exogenous_data,
+                                                 on=column_mapping["date_column"], how='left')
+        test_product_sales_with_exog = pd.merge(test_product_sales, exogenous_data,
+                                                on=column_mapping["date_column"], how='left')
+
+        return train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog
+
+
+    elif selected_region == "USA":
+        exogenous_data = read_file("App/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv")
+        exog_date_column = "Date"
+        exogenous_data[exog_date_column] = pd.to_datetime(exogenous_data[exog_date_column], format="%Y-%m-%d", errors="coerce")
+        exogenous_data[exog_date_column] = exogenous_data[exog_date_column].dt.tz_localize(None)
+        exogenous_data = exogenous_data.rename(columns={exog_date_column: column_mapping["date_column"]})
+
+        train_daily_store_sales_with_exog = pd.merge(train_daily_store_sales, exogenous_data,
+                                                     on=column_mapping["date_column"], how='left')
+        test_daily_store_sales_with_exog = pd.merge(test_daily_store_sales, exogenous_data,
+                                                    on=column_mapping["date_column"], how='left')
+        train_product_sales_with_exog = pd.merge(train_product_sales, exogenous_data,
+                                                 on=column_mapping["date_column"], how='left')
+        test_product_sales_with_exog = pd.merge(test_product_sales, exogenous_data,
+                                                on=column_mapping["date_column"], how='left')
+
+
+        return train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog
+
+
+
+
+
+
+
+

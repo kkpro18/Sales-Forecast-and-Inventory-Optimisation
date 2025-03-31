@@ -3,91 +3,14 @@
   <component name="CsvFileAttributes">
     <option name="attributeMap">
       <map>
-        <entry key="/App/data/kaggle.com:datasets:fahadrehman07:retail-transaction-dataset/Retail_Transaction_Dataset.csv">
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
             </Attribute>
           </value>
         </entry>
-        <entry key="/App/data/kaggle.com:datasets:rajatsurana979:fast-food-sales-report/Balaji Fast Food Sales.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/kaggle.com:datasets:shreyanshverma27:online-sales-dataset-popular-marketplace-data/Online Sales Data.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/kaggle.com:datasets:tanayatipre:store-sales-forecasting-dataset/stores_sales_forecasting.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_BoE_Bank_Rate.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_CPIH_250125.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_Internet_Sales_Ratio.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_RPI_250125.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/UK/UK_Unemployment_Rate.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/USA/USA_Unemployment_Rate_1948_2024.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/AppMaintenance/raw_macro_economical_data/USA/USA_interest-rates-2000-2024.csv">
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
@@ -95,13 +18,6 @@
           </value>
         </entry>
         <entry key="/Z_Experiments/1_datasets/archive.ics.uci.edu--online+retail+ii/online_retail_II_2009_2010.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/Z_Experiments/1_datasets/kaggle.com:datasets:tanayatipre:store-sales-forecasting-dataset/stores_sales_forecasting.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

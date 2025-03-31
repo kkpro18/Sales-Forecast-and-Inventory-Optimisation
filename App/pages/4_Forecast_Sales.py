@@ -4,7 +4,7 @@ import joblib
 import pandas as pd
 import streamlit as st
 from App.utils.session_manager import SessionManager
-from App.utils.forecasting_sales import get_seasonality, predict_sales
+from App.utils.forecasting_sales import get_seasonality, predict_sales_univariate, predict_sales_multivariate
 import asyncio
 
 st.set_page_config(
@@ -22,8 +22,8 @@ if not SessionManager.is_there("data") or not SessionManager.is_there("column_ma
 elif not SessionManager.get_state("preprocess_data_complete"):
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
-    train_daily_store_sales = SessionManager.get_state("train_daily_store_sales")
-    test_daily_store_sales = SessionManager.get_state("test_daily_store_sales")
+    train_daily_sales = SessionManager.get_state("train_daily_sales")
+    test_daily_sales = SessionManager.get_state("test_daily_sales")
 
     column_mapping = SessionManager.get_state("column_mapping")
     get_seasonality()
@@ -31,9 +31,17 @@ else:
     st.markdown("### Store Wide Sales Forecasting")
 
     asyncio.run(
-        predict_sales(
-            train_daily_store_sales,
-            test_daily_store_sales,
+        predict_sales_univariate(
+            train_daily_sales,
+            test_daily_sales,
+            column_mapping,
+            product_name=None
+        )
+    )
+    asyncio.run(
+        predict_sales_multivariate(
+            train_daily_sales,
+            test_daily_sales,
             column_mapping,
             product_name=None
         )
@@ -44,11 +52,11 @@ else:
 
     st.markdown("### Individual Product Sales Forecasting")
 
-    train_product_sales_raw = SessionManager.get_state("train_daily_product_grouped_sales")
+    train_product_sales_raw = SessionManager.get_state("train_product_sales")
     train_product_sales_grouped = train_product_sales_raw.groupby(column_mapping["product_column"])
     train_product_names = list(train_product_sales_grouped.groups.keys())
 
-    test_product_sales_raw = SessionManager.get_state("test_daily_product_grouped_sales")
+    test_product_sales_raw = SessionManager.get_state("test_product_sales")
     test_product_sales_grouped = test_product_sales_raw.groupby(column_mapping["product_column"])
     test_product_names = list(test_product_sales_grouped.groups.keys())
 
@@ -70,12 +78,21 @@ else:
             st.warning("Not enough data for this product to train the model.")
 
         asyncio.run(
-            predict_sales(
+            predict_sales_univariate(
                 train_product_data, test_product_data,
                 column_mapping,
                 product_name=test_product_names[SessionManager.get_state("product_index")]
             )
         )
+        asyncio.run(
+            predict_sales_multivariate(
+                train_daily_sales,
+                test_daily_sales,
+                column_mapping,
+                product_name=None
+            )
+        )
+
 
 
     elif next_button:
@@ -89,13 +106,20 @@ else:
             st.warning("Not enough data for this product to train the model.")
         else:
             asyncio.run(
-                predict_sales(
+                predict_sales_univariate(
                     train_product_data, test_product_data,
                     column_mapping,
                     product_name=test_product_names[SessionManager.get_state("product_index")]
                 )
             )
-
+            asyncio.run(
+                predict_sales_multivariate(
+                    train_daily_sales,
+                    test_daily_sales,
+                    column_mapping,
+                    product_name=None
+                )
+            )
 
     st.page_link("pages/5_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy",
                  icon="⚙️")

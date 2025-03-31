@@ -2,7 +2,7 @@ import streamlit as st
 from App.utils.session_manager import SessionManager
 import pandas as pd
 
-from App.utils.data_preprocessing import format_dates, fill_missing_date_range, convert_to_dict
+from App.utils.data_preprocessing import format_dates, fill_missing_date_range_product_group, convert_to_dict, concatenate_exogenous_data
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -64,64 +64,57 @@ else:
 
     st.write("Processing Dates in the Correct Format")
     train, test = pd.DataFrame(json_response.json()["train"]), pd.DataFrame(json_response.json()["test"])
-    train, test = format_dates(train, test, column_mapping)
+    train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = format_dates(train, test, column_mapping)
     st.success(f"Successfully Formatted Dates Train Size: {len(train)} Test Size: {len(test)}")
 
-    train_daily_store_sales = train.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
-    train_date_range = pd.date_range(start=train_daily_store_sales[column_mapping["date_column"]].min(), end=train_daily_store_sales[column_mapping["date_column"]].max(), freq='D')
-    train_daily_dates_df = pd.DataFrame(train_date_range, columns=[column_mapping["date_column"]])
-    train_daily_store_sales = pd.merge(train_daily_dates_df, train_daily_store_sales, on=column_mapping["date_column"], how='left')
-    train_daily_store_sales[column_mapping["quantity_sold_column"]] = train_daily_store_sales[column_mapping["quantity_sold_column"]].fillna(0)
-    train_daily_store_sales.reset_index(drop=True, inplace=True)
 
-    test_daily_store_sales = test.groupby(column_mapping["date_column"], as_index=False).agg({column_mapping["quantity_sold_column"]: 'sum'})
-    test_date_range = pd.date_range(start=test_daily_store_sales[column_mapping["date_column"]].min(), end=test_daily_store_sales[column_mapping["date_column"]].max(), freq='D')
-    test_daily_dates_df = pd.DataFrame(test_date_range, columns=[column_mapping["date_column"]])
-    test_daily_store_sales = pd.merge(test_daily_dates_df, test_daily_store_sales, on=column_mapping["date_column"], how='left')
-    test_daily_store_sales[column_mapping["quantity_sold_column"]] = test_daily_store_sales[column_mapping["quantity_sold_column"]].fillna(0)
-    test_daily_store_sales.reset_index(drop=True, inplace=True)
+    st.write("Concatenating Exogenous Variables")
+    selected_region = SessionManager.get_state("region")
+    if SessionManager.get_state("region") != "N/A":
+        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales, column_mapping)
+    st.success(f"Successfully concatenating Exogenous Features")
 
-    train_product_sales = train.groupby([column_mapping["product_column"], column_mapping["date_column"]], as_index=False).agg(
-        {
-            column_mapping["price_column"]: 'mean',
-            column_mapping["quantity_sold_column"]: 'sum'
-        })
-    train_product_sales = train_product_sales.groupby(column_mapping["product_column"]).apply(lambda group: fill_missing_date_range(group, column_mapping))
-    train_product_sales.reset_index(drop=True, inplace=True)
 
-    test_product_sales = test.groupby([column_mapping["product_column"], column_mapping["date_column"]], as_index=False).agg(
-        {
-            column_mapping["price_column"]: 'mean',
-            column_mapping["quantity_sold_column"]: 'sum'
-        })
-    test_product_sales = test_product_sales.groupby(column_mapping["product_column"]).apply(lambda group: fill_missing_date_range(group, column_mapping))
-    test_product_sales.reset_index(drop=True, inplace=True)
-
-    SessionManager.set_state("preprocess_data_complete", True)
+    SessionManager.set_state("preprocess_data_complete",True)
 
     st.markdown("## Preprocessed Data")
-    SessionManager.set_state("train", train)
-    SessionManager.set_state("test", test)
 
-    SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)
-    SessionManager.set_state("train_daily_product_grouped_sales", train_product_sales)
+    SessionManager.set_state("train_daily_sales", train_daily_store_sales)
+    SessionManager.set_state("train_daily_sales_with_exog", train_daily_store_sales_with_exog)
+    SessionManager.set_state("train_product_sales", train_product_sales)
+    SessionManager.set_state("train_product_sales_with_exog", train_product_sales_with_exog)
 
-    SessionManager.set_state("test_daily_store_sales", test_daily_store_sales)
-    SessionManager.set_state("test_daily_product_grouped_sales", test_product_sales)
+    SessionManager.set_state("test_daily_sales", test_daily_store_sales)
+    SessionManager.set_state("test_daily_sales_with_exog", test_daily_store_sales_with_exog)
+    SessionManager.set_state("test_product_sales", test_product_sales)
+    SessionManager.set_state("test_product_sales_with_exog", test_product_sales_with_exog)
 
     st.markdown("### Train Data")
-    st.subheader("train_daily_store_sales")
-    st.dataframe(SessionManager.get_state("train_daily_store_sales"))
+    st.subheader("train_daily_sales")
+    st.dataframe(SessionManager.get_state("train_daily_sales"))
 
-    st.subheader("train_daily_product_grouped_sales")
-    st.dataframe(SessionManager.get_state("train_daily_product_grouped_sales"))
+    st.subheader("train_daily_sales_with_exog")
+    st.dataframe(SessionManager.get_state("train_daily_sales_with_exog"))
+
+    st.subheader("train_product_sales")
+    st.dataframe(SessionManager.get_state("train_product_sales"))
+
+    st.subheader("train_product_sales_with_exog")
+    st.dataframe(SessionManager.get_state("train_product_sales_with_exog"))
 
     st.markdown("### Test Data")
-    st.subheader("test_daily_store_sales")
-    st.dataframe(SessionManager.get_state("test_daily_store_sales"))
+    st.subheader("test_daily_sales")
+    st.dataframe(SessionManager.get_state("test_daily_sales"))
 
-    st.subheader("test_daily_product_grouped_sales")
-    st.dataframe(SessionManager.get_state("test_daily_product_grouped_sales"))
+    st.subheader("test_daily_sales_with_exog")
+    st.dataframe(SessionManager.get_state("test_daily_sales_with_exog"))
+
+    st.subheader("test_product_sales")
+    st.dataframe(SessionManager.get_state("test_product_sales"))
+
+    st.subheader("test_product_sales_with_exog")
+    st.dataframe(SessionManager.get_state("test_product_sales_with_exog"))
+
 
     st.balloons()
 
