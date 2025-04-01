@@ -30,11 +30,12 @@ else:
     json_response = SessionManager.fast_api("transform_data_api", data=data_as_dictionary, column_mapping=column_mapping)
     if json_response.status_code == 200:
         st.success(f"Successfully Transformed Data No. Rows: {len(json_response.json())}")
+        SessionManager.set_state("is_log_transformed", True)
     else:
         st.error(json_response.text)
 
     st.write("Handling Outliers")
-    json_response = SessionManager.fast_api("handle_outliers_api", data =json_response.json(), column_mapping = column_mapping)
+    json_response = SessionManager.fast_api("handle_outliers_api", data = json_response.json(), column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success(f"Successfully Handled Outliers No. Rows: {len(json_response.json())}")
     else:

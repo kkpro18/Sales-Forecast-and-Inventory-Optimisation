@@ -4,7 +4,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import pmdarima as pm
 import streamlit as st
-from sklearn.metrics import root_mean_squared_error, r2_score
+from sklearn.metrics import root_mean_squared_error, r2_score, mean_absolute_percentage_error
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error, mean_absolute_error
 import uuid
 from App.utils.session_manager import SessionManager
@@ -18,13 +18,6 @@ def get_seasonality():
         st.write(f"You Selected {SessionManager.get_state('selected_seasonality')}.")
 
         return SessionManager.get_state('selected_seasonality')
-
-def add_exog_features(X_train, X_test):
-    pd.read_csv("App/data/MacroEconomicalData")
-
-    return X_train, X_test
-
-
 
 def fit_arima_model(y_train):
     st.write("ARIMA")
@@ -98,7 +91,7 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
     X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
 
-    json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
+    json_response = SessionManager.fast_api("fit_models_in_parallel_api", model_one="arima", model_two="sarima", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
     if json_response.status_code == 200:
 
         arima_model_path = json_response.json()["arima"]["arima_model_path"]
@@ -136,56 +129,44 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
         else:
             st.error(json_response.text)
 
-        # sarimax_model_path = json_response.json()["sarimax"]["sarimax_model_path"]
-
     else:
         st.error(json_response.text)
 
-    # Predict SARIMAX
-    # json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-    #                                         model_path=sarimax_model_path)
-    #
-    # if json_response.status_code == 200:
-    #     y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
-    #     y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
-    # else:
-    #     st.error(json_response.text)
 
-
-    # st.markdown("### SARIMAX Model:")
-    # st.write(joblib.load(sarimax_model_path).summary())
-    # print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarimax, y_test, y_test_prediction_sarimax)
-    # plot_prediction(X_train_exog, y_train, X_test_exog, y_test, y_test_prediction_sarima, column_mapping, univariate=False)
 
 
 async def predict_sales_multivariate(train, test, column_mapping, product_name=None):
     features = train.columns.tolist()
-    features.remove(column_mapping["quantity_sold_column"], column_mapping["date_column"])
+    features.remove(column_mapping["quantity_sold_column"])
+    features.remove(column_mapping["date_column"])
+
     target = column_mapping["quantity_sold_column"]
 
     X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
 
-    json_response = SessionManager.fast_api("fit_models_in_parallel_api", y_train=y_train.to_dict(),
+    json_response = SessionManager.fast_api("fit_models_in_parallel_api",
+                                            y_train=y_train.to_dict(),
+                                            X_train=X_train.to_dict(orient='records'),
                                             seasonality=SessionManager.get_state('selected_seasonality'),
-                                            product_name=product_name)
+                                            product_name=product_name, model_one = "arimax", model_two = "sarimax")
     if json_response.status_code == 200:
 
-        arimax_model_path = json_response.json()["arima"]["arima_model_path"]
-        sarimax_model_path = json_response.json()["sarima"]["sarima_model_path"]
+        arimax_model_path = json_response.json()["arimax"]["arimax_model_path"]
+        sarimax_model_path = json_response.json()["sarimax"]["sarimax_model_path"]
 
         # Predict ARIMA
         json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
                                                 model_path=arimax_model_path)
         if json_response.status_code == 200:
-            y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
+            y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_arimax = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### ARIMAX Model:")
             st.write(joblib.load(arimax_model_path).summary())
 
-            print_performance_metrics(arimax_model_path, y_train, y_train_prediction_arima, y_test,
-                                      y_test_prediction_arima)
-            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima, column_mapping)
+            print_performance_metrics(arimax_model_path, y_train, y_train_prediction_arimax, y_test,
+                                      y_test_prediction_arimax)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax, column_mapping)
         else:
             st.error(json_response.text)
 
@@ -194,50 +175,39 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
                                                 model_path=sarimax_model_path)
 
         if json_response.status_code == 200:
-            y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction_sarima = pd.Series(json_response.json()["y_test_prediction"])
+            y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### SARIMAX Model:")
             st.write(joblib.load(sarimax_model_path).summary())
-            print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarima, y_test,
-                                      y_test_prediction_sarima)
-            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima, column_mapping)
+            print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarimax, y_test,
+                                      y_test_prediction_sarimax)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarimax, column_mapping)
         else:
             st.error(json_response.text)
 
     else:
         st.error(json_response.text)
 
-    # Predict SARIMAX
-    # json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-    #                                         model_path=sarimax_model_path)
-    #
-    # if json_response.status_code == 200:
-    #     y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
-    #     y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
-    # else:
-    #     st.error(json_response.text)
-
-    # st.markdown("### SARIMAX Model:")
-    # st.write(joblib.load(sarimax_model_path).summary())
-    # print_performance_metrics(sarimax_model_path, y_train, y_train_prediction_sarimax, y_test, y_test_prediction_sarimax)
-    # plot_prediction(X_train_exog, y_train, X_test_exog, y_test, y_test_prediction_sarima, column_mapping, univariate=False)
-
-
 def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y_test_prediction):
 
     model = joblib.load(model_path)
     performance_metrics = {
-        "Train: Mean Absolute Scaled Error (MASE)": mean_absolute_scaled_error(y_train, y_train_prediction, y_train=y_train),
-        "Test: Mean Absolute Scaled Error (MASE)": mean_absolute_scaled_error(y_test, y_test_prediction, y_train=y_train),
-        "Train: Root Mean Squared Error (RMSE)": root_mean_squared_error(y_train, y_train_prediction),
-        "Test: Root Mean Squared Error (RMSE)": root_mean_squared_error(y_test, y_test_prediction),
-        "Train: Mean Absolute Error (MAE)": mean_absolute_error(y_train, y_train_prediction),
-        "Test: Mean Absolute Error (MAE)": mean_absolute_error(y_test, y_test_prediction),
-        "Train: R Squared (R²)": r2_score(y_train, y_train_prediction),
-        "Test: R Squared (R²)": r2_score(y_test, y_test_prediction),
-        "Akaike Information Criterion (AIC)": model.aic(),
-        "Bayesian Information Criterion (BIC)": model.bic(),
+        "Train: Mean Absolute Scaled Error (MASE)":round(
+            mean_absolute_scaled_error(y_train, y_train_prediction, y_train=y_train), 4),
+        "Test: Mean Absolute Scaled Error (MASE)": round(
+            mean_absolute_scaled_error(y_test, y_test_prediction, y_train=y_train), 4),
+        "Train: Mean Absolute Percentage Error (MAPE)": round(
+            mean_absolute_percentage_error(y_train, y_train_prediction), 4),
+        "Test: Mean Absolute Percentage Error (MAPE)": round(mean_absolute_percentage_error(y_test, y_test_prediction), 4),
+        "Train: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_train, y_train_prediction), 4),
+        "Test: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_test, y_test_prediction), 4),
+        "Train: Mean Absolute Error (MAE)": round(mean_absolute_error(y_train, y_train_prediction), 4),
+        "Test: Mean Absolute Error (MAE)": round(mean_absolute_error(y_test, y_test_prediction), 4),
+        "Train: R Squared (R²)": round(r2_score(y_train, y_train_prediction), 4),
+        "Test: R Squared (R²)": round(r2_score(y_test, y_test_prediction), 4),
+        "Akaike Information Criterion (AIC)": round(model.aic(), 4),
+        "Bayesian Information Criterion (BIC)": round(model.bic(), 4),
     }
     left, right = st.columns(2)
     for i, (metric, value) in enumerate(performance_metrics.items()):
@@ -250,6 +220,8 @@ def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_
     if multivariate:
         X_train = X_train[column_mapping["date_column"]]
         X_test = X_test[column_mapping["date_column"]]
+
+
     fig = go.Figure()
     fig.add_trace(go.Scatter(x=X_train, y=y_train, mode='lines', name='Training Data', line=dict(color='red')))
     fig.add_trace(go.Scatter(x=X_test, y=y_test, mode='lines', name='Testing Data', line=dict(color='green')))

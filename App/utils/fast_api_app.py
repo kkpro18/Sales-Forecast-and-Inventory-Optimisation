@@ -7,7 +7,7 @@ from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
 from App.utils.data_preprocessing import transform_data, handle_outliers, format_dates, split_training_testing_data, encode_product_column, handle_missing_values
-from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, predict
+from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, predict
 from datetime import datetime
 from App.utils.session_manager import SessionManager
 
@@ -29,6 +29,8 @@ class InputData(BaseModel):
     test_forecast_steps: Optional[conint(gt=0)] = None
     model_path : Optional[str] = None
     product_name: Optional[str] = None
+    model_one : Optional[str] = None
+    model_two : Optional[str] = None
 
 
 ## Pre Processing
@@ -135,7 +137,6 @@ def fit_and_store_arima_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"arima_model_path": arima_model_path}
-
 def fit_and_store_sarima_model(received_data: InputData):
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
@@ -158,19 +159,66 @@ def fit_and_store_sarima_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"sarima_model_path": sarima_model_path}
+def fit_and_store_arimax_model(received_data: InputData):
+    try:
+        if not received_data.y_train or len(received_data.y_train) == 0 or not received_data.X_train or len(received_data.X_train) == 0:
+            raise ValueError("y_train or X_train is missing / empty")
+        X_train = pd.DataFrame(received_data.X_train)
+        y_train = pd.Series(received_data.y_train)
+
+        arimax_model = fit_arimax_model(X_train, y_train)
+        date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        if received_data.product_name is not None:
+            arimax_model_path = f'models/arimax_{received_data.product_name}_{date_timestamp}.pkl'
+        else:
+            arimax_model_path = f'models/arimax_{date_timestamp}.pkl'
+        joblib.dump(arimax_model, arimax_model_path)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return {"arimax_model_path": arimax_model_path}
+
+
+def fit_and_store_sarimax_model(received_data: InputData):
+    try:
+        if not received_data.y_train or len(received_data.y_train) == 0:
+            raise ValueError("y_train is missing / empty")
+        if received_data.seasonality is None:
+            raise ValueError("seasonality is missing.")
+
+        seasonality = received_data.seasonality
+        y_train = pd.Series(received_data.y_train)
+
+        sarimax_model = fit_sarimax_model(X_train, y_train, seasonality)
+        date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        if received_data.product_name is not None:
+            sarimax_model_path = f'models/sarimax_{received_data.product_name}_{date_timestamp}.pkl'
+        else:
+            sarimax_model_path = f'models/sarimax_{date_timestamp}.pkl'
+        joblib.dump(sarimax_model, sarimax_model_path)
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return {"sarima_model_path": sarima_model_path}
 
 
 # API Endpoint for fitting models in Parallel
 @app.post("/fit_models_in_parallel_api")
 async def fit_models_in_parallel_api(received_data: InputData): # https://blog.stackademic.com/fastapi-parallel-processing-1eaa67981ab9
     loop = asyncio.get_running_loop()
+    if received_data.model_one == "arima" and received_data.model_two == "sarima":
+        fitted_arima = loop.run_in_executor(executor, fit_and_store_arima_model, received_data)
+        fitted_sarima = loop.run_in_executor(executor, fit_and_store_sarima_model, received_data)
+        arima, sarima = await asyncio.gather(fitted_arima, fitted_sarima)
+        return {"arima": arima,"sarima": sarima}
 
-    fitting_arima = loop.run_in_executor(executor, fit_and_store_arima_model, received_data)
-    fitting_sarima = loop.run_in_executor(executor, fit_and_store_sarima_model, received_data)
-
-    arima_model, sarima_model = await asyncio.gather(fitting_arima, fitting_sarima)
-
-    return {"arima" : arima_model, "sarima" : sarima_model}
+    elif received_data.model_one == "arimax" and received_data.model_two == "sarimax":
+        fitted_arimax = loop.run_in_executor(executor, fit_and_store_arimax_model, received_data)
+        fitted_sarimax = loop.run_in_executor(executor, fit_and_store_sarimax_model, received_data)
+        arimax, sarimax = await asyncio.gather(fitted_arimax, fitted_sarimax)
+        return {"arimax": arimax, "sarimax": sarimax}
 
 
 # Model Predictions
@@ -189,8 +237,10 @@ def predict_train_test_api(received_data: InputData):
         y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
 
         if SessionManager.get_state("is_log_transformed"):
-            y_train_prediction = np.expm1(y_train_prediction)
-            y_test_prediction = np.expm1(y_test_prediction)
+
+            y_train_prediction = np.round(np.expm1(y_train_prediction))
+            y_test_prediction = np.round(np.expm1(y_test_prediction))
+
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")

@@ -20,9 +20,8 @@ elif not SessionManager.get_state("preprocess_data_complete"):
 else:
     store_data = SessionManager.get_state("train_daily_sales")
     product_data = SessionManager.get_state("train_product_sales")
-
-
     column_mapping = SessionManager.get_state("column_mapping")
+
     st.header("View Sales Across the Store: ")
     visualise_storewide_sales(store_data, column_mapping)
 

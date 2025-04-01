@@ -4,12 +4,9 @@ import streamlit as st
 import plotly.graph_objects as go
 from App.utils.session_manager import SessionManager
 
-def visualise_storewide_sales(data, column_mapping, quantity_sold_column=None):
+def visualise_storewide_sales(data, column_mapping):
     date_column = column_mapping["date_column"]
-    if quantity_sold_column is None:
-        quantity_sold_column = column_mapping["quantity_sold_column"]
-    else:
-        quantity_sold_column = quantity_sold_column
+    quantity_sold_column = column_mapping["quantity_sold_column"]
 
     figure = go.Figure()
     figure.add_trace(go.Scatter(x=data[date_column], y=data[quantity_sold_column]))
@@ -45,7 +42,7 @@ def visualise_individual_product_sales(product_groups, column_mapping):
         plot_individual_product()
 
     left_column, right_column = st.columns(2)
-    previous_button = left_column.button("Previous", disabled=SessionManager.get_state("product_index") == 0)
+    previous_button = left_column.button("Previous", disabled=SessionManager.get_state("product_index") < 0)
     next_button = right_column.button("Next", disabled=SessionManager.get_state("product_index") >= len(product_names) - 1)
 
     if previous_button:

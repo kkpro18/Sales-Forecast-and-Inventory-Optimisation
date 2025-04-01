@@ -18,12 +18,7 @@ st.write("""Here you can upload your dataset in CSV format. You can click to upl
 
 if not SessionManager.is_there("uploaded_dataset"):
     uploaded_dataset = st.file_uploader("Upload your sales data", type=["csv", "xlsx"])
-elif SessionManager.is_there("uploaded_dataset"):
-    st.header("Uploaded Dataset")
-    st.dataframe(SessionManager.get_state("uploaded_dataset"))
 
-    st.subheader("Filtered Dataset")
-    st.dataframe(SessionManager.get_state("data"))
 
 if uploaded_dataset is not None:
     data = read_uploaded_data(uploaded_dataset=uploaded_dataset)

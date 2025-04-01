@@ -1,11 +1,9 @@
-import uuid
-
-import joblib
-import pandas as pd
-import streamlit as st
-from App.utils.session_manager import SessionManager
-from App.utils.forecasting_sales import get_seasonality, predict_sales_univariate, predict_sales_multivariate
 import asyncio
+
+import streamlit as st
+
+from App.utils.forecasting_sales import get_seasonality, predict_sales_univariate, predict_sales_multivariate
+from App.utils.session_manager import SessionManager
 
 st.set_page_config(
     page_title="Forecast Sales",
@@ -47,9 +45,6 @@ else:
         )
     )
 
-
-
-
     st.markdown("### Individual Product Sales Forecasting")
 
     train_product_sales_raw = SessionManager.get_state("train_product_sales")
@@ -74,7 +69,7 @@ else:
         st.write(f"### {product_name} Train Samples: {len(train_product_sales_grouped.get_group(product_name))}, Test Samples: {len(test_product_sales_grouped.get_group(product_name))}")
         train_product_data = train_product_sales_grouped.get_group(product_name)
         test_product_data = test_product_sales_grouped.get_group(product_name)
-        if len(train_product_data) < 5 or len(test_product_data) < 5:
+        if len(train_product_data) < 10:
             st.warning("Not enough data for this product to train the model.")
 
         asyncio.run(
@@ -89,7 +84,7 @@ else:
                 train_daily_sales,
                 test_daily_sales,
                 column_mapping,
-                product_name=None
+                product_name=test_product_names[SessionManager.get_state("product_index")]
             )
         )
 
@@ -114,10 +109,9 @@ else:
             )
             asyncio.run(
                 predict_sales_multivariate(
-                    train_daily_sales,
-                    test_daily_sales,
+                    train_daily_sales, test_daily_sales,
                     column_mapping,
-                    product_name=None
+                    product_name=test_product_names[SessionManager.get_state("product_index")]
                 )
             )
 

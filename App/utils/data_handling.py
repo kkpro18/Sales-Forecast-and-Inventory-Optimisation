@@ -42,5 +42,4 @@ def map_variables(data):
         SessionManager.set_state("confirm_button_column_map", confirm_button)
         SessionManager.set_state("region", region)
 
-
     return column_mapping

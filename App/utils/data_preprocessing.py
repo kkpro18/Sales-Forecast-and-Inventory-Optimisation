@@ -13,6 +13,7 @@ def convert_to_dict(data):
     data.replace(pd.NaT, None, inplace=True)
     data.replace([np.nan], None, inplace=True)
     data.replace([np.inf, -np.inf], None, inplace=True)
+    # needs to handle symbols maybe
 
     return data.to_dict(orient='records')
 
@@ -20,7 +21,6 @@ def convert_to_dict(data):
 def transform_data(data, column_mapping):
     sales_column = column_mapping["quantity_sold_column"]
     if data[sales_column].skew() > 1:
-        SessionManager.set_state("is_log_transformed", True)
         data[sales_column] = np.log1p(data[sales_column])
         st.success("Sales Column has been transformed using log transformation as it is skewed")
     else:
@@ -91,7 +91,7 @@ def split_training_testing_data(data, column_mapping):
 
     data.sort_values(by=date_column, ascending=True, inplace=True)
     data.reset_index(drop=True, inplace=True)
-    train_size = int(len(data) * 0.70)
+    train_size = int(len(data) * 0.90)
     end_train_date = data.iloc[train_size][date_column]
     st.write(f"Training End Date : {end_train_date}")
 
