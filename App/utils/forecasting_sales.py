@@ -137,6 +137,7 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
 async def predict_sales_multivariate(train, test, column_mapping, product_name=None):
     features = train.columns.tolist()
+    st.write("features are", features)
     features.remove(column_mapping["quantity_sold_column"])
     features.remove(column_mapping["date_column"])
 

@@ -16,9 +16,7 @@ st.set_page_config(
 st.markdown("# Upload Dataset")
 st.write("""Here you can upload your dataset in CSV format. You can click to upload or drag a CSV file over to this page.""")
 
-if not SessionManager.is_there("uploaded_dataset"):
-    uploaded_dataset = st.file_uploader("Upload your sales data", type=["csv", "xlsx"])
-
+uploaded_dataset = st.file_uploader("Upload your sales data", type=["csv", "xlsx"])
 
 if uploaded_dataset is not None:
     data = read_uploaded_data(uploaded_dataset=uploaded_dataset)
@@ -28,13 +26,15 @@ if uploaded_dataset is not None:
     st.dataframe(data.head())
 
     st.subheader("Map Columns to the Expected Variables")
-
+    SessionManager.set_state("confirm_button_column_map", None)
+    SessionManager.set_state("region", None)
     column_mapping = map_variables(data)
     if SessionManager.get_state("confirm_button_column_map"):
         SessionManager.set_state("column_mapping", column_mapping)
         st.success("Columns mapped successfully!")
     st.write("Selected Region: ", SessionManager.get_state("region"))
     st.write("Column Mapping: ", column_mapping)
+
 
     if SessionManager.is_there("data") and SessionManager.is_there("column_mapping"):
         SessionManager.set_state("data", data[column_mapping.values()])

@@ -1,7 +1,7 @@
 import asyncio
 
 import streamlit as st
-
+import os
 from App.utils.forecasting_sales import get_seasonality, predict_sales_univariate, predict_sales_multivariate
 from App.utils.session_manager import SessionManager
 
@@ -23,10 +23,17 @@ else:
     train_daily_sales = SessionManager.get_state("train_daily_sales")
     test_daily_sales = SessionManager.get_state("test_daily_sales")
 
+    train_daily_sales_with_exog = SessionManager.get_state("train_daily_sales_with_exog")
+    test_daily_sales_with_exog = SessionManager.get_state("test_daily_sales_with_exog")
+
     column_mapping = SessionManager.get_state("column_mapping")
     get_seasonality()
 
     st.markdown("### Store Wide Sales Forecasting")
+
+    if not os.path.isdir("models"):
+        os.mkdir("models")
+
 
     asyncio.run(
         predict_sales_univariate(
@@ -48,6 +55,8 @@ else:
     st.markdown("### Individual Product Sales Forecasting")
 
     train_product_sales_raw = SessionManager.get_state("train_product_sales")
+    train_product_sales_raw_with_exog = SessionManager.get_state("train_product_sales")
+
     train_product_sales_grouped = train_product_sales_raw.groupby(column_mapping["product_column"])
     train_product_names = list(train_product_sales_grouped.groups.keys())
 
