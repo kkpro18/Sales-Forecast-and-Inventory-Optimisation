@@ -8,7 +8,7 @@ DATE="March 2025"
 
 # Simple header 
 echo -e "${GREEN}==========================================" 
-echo -e "${YELLOW} Mini 
+echo -e "${YELLOW}
 Setup Script - Version $VERSION" 
 echo -e "  Author: $AUTHOR" 
 echo -e "  Date: $DATE" 
