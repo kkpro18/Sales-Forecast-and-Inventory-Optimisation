@@ -91,7 +91,7 @@ def split_training_testing_data(data, column_mapping):
 
     data.sort_values(by=date_column, ascending=True, inplace=True)
     data.reset_index(drop=True, inplace=True)
-    train_size = int(len(data) * 0.90)
+    train_size = int(len(data) * 0.80)
     end_train_date = data.iloc[train_size][date_column]
     st.write(f"Training End Date : {end_train_date}")
 

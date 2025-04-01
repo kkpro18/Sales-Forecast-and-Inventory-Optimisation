@@ -2,6 +2,7 @@ import asyncio
 from concurrent.futures import ProcessPoolExecutor
 from typing import Optional, Dict, List, Any
 import joblib
+import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
@@ -189,6 +190,8 @@ def fit_and_store_sarimax_model(received_data: InputData):
 
         seasonality = received_data.seasonality
         y_train = pd.Series(received_data.y_train)
+        X_train = pd.DataFrame(received_data.X_train)
+
 
         sarimax_model = fit_sarimax_model(X_train, y_train, seasonality)
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -201,7 +204,7 @@ def fit_and_store_sarimax_model(received_data: InputData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        return {"sarima_model_path": sarima_model_path}
+        return {"sarimax_model_path": sarimax_model_path}
 
 
 # API Endpoint for fitting models in Parallel

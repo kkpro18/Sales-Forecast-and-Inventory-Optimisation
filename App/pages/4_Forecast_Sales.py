@@ -45,8 +45,8 @@ else:
     )
     asyncio.run(
         predict_sales_multivariate(
-            train_daily_sales,
-            test_daily_sales,
+            train_daily_sales_with_exog,
+            test_daily_sales_with_exog,
             column_mapping,
             product_name=None
         )
@@ -55,14 +55,20 @@ else:
     st.markdown("### Individual Product Sales Forecasting")
 
     train_product_sales_raw = SessionManager.get_state("train_product_sales")
-    train_product_sales_raw_with_exog = SessionManager.get_state("train_product_sales")
-
     train_product_sales_grouped = train_product_sales_raw.groupby(column_mapping["product_column"])
     train_product_names = list(train_product_sales_grouped.groups.keys())
 
     test_product_sales_raw = SessionManager.get_state("test_product_sales")
     test_product_sales_grouped = test_product_sales_raw.groupby(column_mapping["product_column"])
     test_product_names = list(test_product_sales_grouped.groups.keys())
+
+    train_product_sales_raw_with_exog = SessionManager.get_state("train_product_sales_with_exog")
+    train_product_sales_with_exog_grouped = train_product_sales_raw_with_exog.groupby(column_mapping["product_column"])
+    train_product_with_exog_names = list(train_product_sales_with_exog_grouped.groups.keys())
+
+    test_product_sales_with_exog_raw = SessionManager.get_state("test_product_sales_with_exog")
+    test_product_sales_with_exog_grouped = test_product_sales_with_exog_raw.groupby(column_mapping["product_column"])
+    test_product_with_exog_names = list(test_product_sales_with_exog_grouped.groups.keys())
 
     if not set(test_product_names).issubset(train_product_names):
         st.warning("Test set contains products not in train set, please check your data.")

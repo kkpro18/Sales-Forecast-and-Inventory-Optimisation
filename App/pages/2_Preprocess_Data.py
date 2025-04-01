@@ -68,6 +68,9 @@ else:
     train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = format_dates(train, test, column_mapping)
     st.success(f"Successfully Formatted Dates Train Size: {len(train)} Test Size: {len(test)}")
 
+    st.write("train", len(train))
+
+    st.write("test", len(test))
 
     st.write("Concatenating Exogenous Variables")
     selected_region = SessionManager.get_state("region")
@@ -75,6 +78,13 @@ else:
         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales, column_mapping)
     st.success(f"Successfully concatenating Exogenous Features")
 
+    st.write("train_daily_store_sales_with_exog", len(train_daily_store_sales_with_exog))
+
+    st.write("test_daily_store_sales_with_exog", len(test_daily_store_sales_with_exog))
+
+    st.write("train_product_sales_with_exog", len(test_product_sales_with_exog))
+
+    st.write("test_product_sales_with_exog", len(test_product_sales_with_exog))
 
     SessionManager.set_state("preprocess_data_complete",True)
 

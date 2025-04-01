@@ -27,7 +27,8 @@ def fit_arima_model(y_train):
                                 error_action='ignore',  # don't need to know if an order does not work
                                 suppress_warnings=False,  # don't want convergence warnings
                                 stepwise=True,  # set to stepwise which is quicker,
-    )
+                                scoring='mae',
+                                )
 
     # st.write(arima_model.summary())
     return arima_model
@@ -39,7 +40,8 @@ def fit_sarima_model(y_train, seasonality):
                                  error_action='ignore',  # don't want to know if an order does not work
                                  suppress_warnings=True,  # don't want convergence warnings
                                  stepwise=True,  # set to stepwise for quicker
-    )
+                                 scoring='mae',
+                                 )
 
     return sarima_model
 
@@ -52,6 +54,7 @@ def fit_arimax_model(X_train, y_train):
                                  error_action='ignore',  # don't want to know if an order does not work
                                  suppress_warnings=True,  # don't want convergence warnings
                                  stepwise=True,  # set to stepwise for quicker
+                                 scoring='mae',
                                  )
 
     return arimax_model
@@ -65,6 +68,7 @@ def fit_sarimax_model(X_train, y_train, seasonality):
                                  error_action='ignore',  # don't want to know if an order does not work
                                  suppress_warnings=True,  # don't want convergence warnings
                                  stepwise=True,  # set to stepwise for quicker
+                                 scoring='mae',
                                  )
 
     return sarima_model
@@ -137,17 +141,27 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
 async def predict_sales_multivariate(train, test, column_mapping, product_name=None):
     features = train.columns.tolist()
-    st.write("features are", features)
     features.remove(column_mapping["quantity_sold_column"])
     features.remove(column_mapping["date_column"])
+    exog_features = features.copy()
+
+    plot_features = column_mapping["date_column"]
+
 
     target = column_mapping["quantity_sold_column"]
 
-    X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
+    X_train_exog, X_test_exog, X_train, X_test, y_train, y_test = train[exog_features], test[exog_features], train[plot_features], test[plot_features], train[target], test[target]
+
+
+    st.write("exog features are", exog_features)
+    st.write("plot features are", plot_features)
+    st.write("x test", len(X_test))
+    st.write("y test", len(y_test))
+
 
     json_response = SessionManager.fast_api("fit_models_in_parallel_api",
                                             y_train=y_train.to_dict(),
-                                            X_train=X_train.to_dict(orient='records'),
+                                            X_train=X_train_exog.to_dict(orient='records'),
                                             seasonality=SessionManager.get_state('selected_seasonality'),
                                             product_name=product_name, model_one = "arimax", model_two = "sarimax")
     if json_response.status_code == 200:
@@ -156,7 +170,7 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
         sarimax_model_path = json_response.json()["sarimax"]["sarimax_model_path"]
 
         # Predict ARIMA
-        json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+        json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test_exog),
                                                 model_path=arimax_model_path)
         if json_response.status_code == 200:
             y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
@@ -165,14 +179,13 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
             st.markdown("### ARIMAX Model:")
             st.write(joblib.load(arimax_model_path).summary())
 
-            print_performance_metrics(arimax_model_path, y_train, y_train_prediction_arimax, y_test,
-                                      y_test_prediction_arimax)
+            print_performance_metrics(arimax_model_path, y_train, y_train_prediction_arimax, y_test, y_test_prediction_arimax)
             plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax, column_mapping)
         else:
             st.error(json_response.text)
 
         # Predict SARIMA
-        json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
+        json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test_exog),
                                                 model_path=sarimax_model_path)
 
         if json_response.status_code == 200:
@@ -191,7 +204,8 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
         st.error(json_response.text)
 
 def print_performance_metrics(model_path, y_train, y_train_prediction, y_test, y_test_prediction):
-
+    st.write("length of train test", len(y_train))
+    st.write("length of test test", len(y_test))
     model = joblib.load(model_path)
     performance_metrics = {
         "Train: Mean Absolute Scaled Error (MASE)":round(
