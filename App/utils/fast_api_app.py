@@ -22,12 +22,12 @@ class InputData(BaseModel):
     data: Optional[List[Dict[str, Any]]] = None
     train : Optional[List[Dict[str, Any]]] = None
     test : Optional[List[Dict[str, Any]]] = None
+    daily_store_sales: Optional[List[Dict[str, Any]]] = None
+    daily_product_sales: Optional[List[Dict[str, Any]]] = None
     X_train: Optional[List[Dict[str, Any]]] = None
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
     y_test: Optional[Dict[int, Any]] = None
-    daily_store_sales: Optional[Dict[int, Any]] = None
-    daily_product_sales: Optional[Dict[int, Any]] = None
     seasonality: Optional[conint(gt=0)] = None
     test_forecast_steps: Optional[conint(gt=0)] = None
     model_path : Optional[str] = None
@@ -65,11 +65,12 @@ def fix_dates_and_split_into_product_sales_and_daily_sales_api(received_data: In
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
 
-        daily_store_sales, product_sales = fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
-        daily_store_sales, product_sales = convert_to_dict(daily_store_sales), convert_to_dict(product_sales)
+        daily_store_sales, daily_product_sales = fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
+        # needs to be filtered i.e NaN to None as JSON does not allow this
+        daily_store_sales, daily_product_sales = convert_to_dict(daily_store_sales), convert_to_dict(daily_product_sales)
         return {
             "daily_store_sales": daily_store_sales,
-        "product_sales": product_sales,
+            "daily_product_sales": daily_product_sales,
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

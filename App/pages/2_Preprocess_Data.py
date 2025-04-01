@@ -41,19 +41,22 @@ else:
     else:
         st.error(json_response.text)
 
-    st.write("Fixing Dates - e.g filling missing dates")
+    st.write("Fixing Dates and Splitting into Product Sales and Overall Store Sales")
     json_response = SessionManager.fast_api("fix_dates_and_split_into_product_sales_and_daily_sales_api", data=json_response.json(),
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(json_response.json()['daily_store_sales'])}, Product Sales Size: {len(json_response.json()['product_sales'])}")
+        st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(json_response.json()['daily_store_sales'])}, Product Sales Size: {len(json_response.json()['daily_product_sales'])}")
     else:
         st.error(json_response.text)
 
+    st.dataframe(pd.DataFrame(json_response.json()['daily_store_sales']))
+    st.dataframe(pd.DataFrame(json_response.json()['daily_product_sales']))
+
     st.write("Splitting into Train, Test")
-    json_response = SessionManager.fast_api("train_test_split_api", data=json_response.json(),
+    json_response = SessionManager.fast_api("train_test_split_api", daily_store_sales=json_response.json()['daily_store_sales'], product_sales=json_response.json()['daily_product_sales'],
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Split Dataset  {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
+        st.success(f"Successfully Split Dataset  {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(json_response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(json_response.json()['test_daily_product_sales'])}")
     else:
         st.error(json_response.text)
 
@@ -61,11 +64,11 @@ else:
     json_response = SessionManager.fast_api("encode_product_column_call",
                                             train_daily_store_sales=json_response.json()["train_daily_store_sales"],
                                             test_daily_store_sales=json_response.json()["test_daily_store_sales"],
-                                            train_product_sales=json_response.json()["train_product_sales"],
-                                            test_product_sales=json_response.json()["test_product_sales"],
+                                            train_daily_product_sales=json_response.json()["train_daily_product_sales"],
+                                            test_daily_product_sales=json_response.json()["test_daily_product_sales"],
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Encoded Product IDs Train Daily Sales Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
+        st.success(f"Successfully Encoded Product IDs Train Daily Sales Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(json_response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(json_response.json()['test_daily_product_sales'])}")
     else:
         st.error(json_response.text)
 
@@ -73,30 +76,30 @@ else:
     json_response = SessionManager.fast_api("handle_missing_values_api",
                                             train_daily_store_sales=json_response.json()["train_daily_store_sales"],
                                             test_daily_store_sales=json_response.json()["test_daily_store_sales"],
-                                            train_product_sales=json_response.json()["train_product_sales"],
-                                            test_product_sales=json_response.json()["test_product_sales"],
+                                            train_daily_product_sales=json_response.json()["train_daily_product_sales"],
+                                            test_daily_product_sales=json_response.json()["test_daily_product_sales"],
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Handled Missing Values Train Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
+        st.success(f"Successfully Handled Missing Values Train Size:{len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(json_response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(json_response.json()['test_daily_product_sales'])}")
     else:
         st.error(json_response.text)
 
     st.write("Processing Dates in the Correct Format")
-    train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = pd.DataFrame(json_response.json()["train_daily_store_sales"]), pd.DataFrame(json_response.json()["test_daily_store_sales"]), pd.DataFrame(json_response.json()["train_product_sales"]), pd.DataFrame(json_response.json()["test_product_sales"])
-    train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = format_dates(train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales,  column_mapping)
-    st.success(f"Successfully Formatted Dates Train Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
+    train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales = pd.DataFrame(json_response.json()["train_daily_store_sales"]), pd.DataFrame(json_response.json()["test_daily_store_sales"]), pd.DataFrame(json_response.json()["train_daily_product_sales"]), pd.DataFrame(json_response.json()["test_daily_product_sales"])
+    train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales = format_dates(train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales,  column_mapping)
+    st.success(f"Successfully Formatted Dates Train Size: {len(train_daily_store_sales)}, Test Daily Sales Size: {len(test_daily_store_sales)}, Train Product Daily Sales Size: {len(train_daily_product_sales)}, Test Product Daily Sales Size: {len(test_daily_product_sales)}")
 
     st.write("Concatenating Exogenous Variables")
     selected_region = SessionManager.get_state("region")
     if SessionManager.get_state("region") != "N/A":
-        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales, column_mapping)
+        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_product_sales_with_exog = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
     st.success(f"Successfully concatenating Exogenous Features")
 
     st.write("train_daily_store_sales_with_exog", len(train_daily_store_sales_with_exog))
 
     st.write("test_daily_store_sales_with_exog", len(test_daily_store_sales_with_exog))
 
-    st.write("train_product_sales_with_exog", len(test_product_sales_with_exog))
+    st.write("train_daily_product_sales_with_exog", len(test_product_sales_with_exog))
 
     st.write("test_product_sales_with_exog", len(test_product_sales_with_exog))
 
@@ -106,12 +109,12 @@ else:
 
     SessionManager.set_state("train_daily_sales", train_daily_store_sales)
     SessionManager.set_state("train_daily_sales_with_exog", train_daily_store_sales_with_exog)
-    SessionManager.set_state("train_product_sales", train_product_sales)
-    SessionManager.set_state("train_product_sales_with_exog", train_product_sales_with_exog)
+    SessionManager.set_state("train_daily_product_sales", train_daily_product_sales)
+    SessionManager.set_state("train_daily_product_sales_with_exog", train_daily_product_sales_with_exog)
 
     SessionManager.set_state("test_daily_sales", test_daily_store_sales)
     SessionManager.set_state("test_daily_sales_with_exog", test_daily_store_sales_with_exog)
-    SessionManager.set_state("test_product_sales", test_product_sales)
+    SessionManager.set_state("test_daily_product_sales", test_daily_product_sales)
     SessionManager.set_state("test_product_sales_with_exog", test_product_sales_with_exog)
 
     st.markdown("### Train Data")
@@ -121,11 +124,11 @@ else:
     st.subheader("train_daily_sales_with_exog")
     st.dataframe(SessionManager.get_state("train_daily_sales_with_exog"))
 
-    st.subheader("train_product_sales")
-    st.dataframe(SessionManager.get_state("train_product_sales"))
+    st.subheader("train_daily_product_sales")
+    st.dataframe(SessionManager.get_state("train_daily_product_sales"))
 
-    st.subheader("train_product_sales_with_exog")
-    st.dataframe(SessionManager.get_state("train_product_sales_with_exog"))
+    st.subheader("train_daily_product_sales_with_exog")
+    st.dataframe(SessionManager.get_state("train_daily_product_sales_with_exog"))
 
     st.markdown("### Test Data")
     st.subheader("test_daily_sales")
@@ -134,8 +137,8 @@ else:
     st.subheader("test_daily_sales_with_exog")
     st.dataframe(SessionManager.get_state("test_daily_sales_with_exog"))
 
-    st.subheader("test_product_sales")
-    st.dataframe(SessionManager.get_state("test_product_sales"))
+    st.subheader("test_daily_product_sales")
+    st.dataframe(SessionManager.get_state("test_daily_product_sales"))
 
     st.subheader("test_product_sales_with_exog")
     st.dataframe(SessionManager.get_state("test_product_sales_with_exog"))

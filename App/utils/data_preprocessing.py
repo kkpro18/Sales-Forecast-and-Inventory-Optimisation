@@ -110,35 +110,35 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
                                            end=group[column_mapping["date_column"]].max(), freq='D')
         product_daily_dates_df = pd.DataFrame(product_date_range, columns=[column_mapping["date_column"]])
         group = pd.merge(product_daily_dates_df, group, on=column_mapping["date_column"], how='left', indicator=True)
-        group.loc[group["_merge"] == 'left_only', column_mapping["quantity_sold_column"]] = 0
-        group.loc[group["_merge"] == 'left_only', column_mapping["price_column"]] = (group.loc[group["_merge"] == "left_only", column_mapping["price_column"]].infer_objects(
-            copy=False).ffill().bfill())
-        group.loc[group["_merge"] == 'left_only', column_mapping["product_column"]] = (group.loc[group["_merge"] == "left_only", column_mapping["product_column"]].infer_objects(
-            copy=False).ffill().bfill())
 
+        group.loc[group["_merge"] == 'left_only'][column_mapping["quantity_sold_column"]] = 0
+        group.loc[group["_merge"] == 'left_only'][column_mapping["price_column"]] = group.loc[group["_merge"] == 'left_only'][column_mapping["price_column"]].ffill()
+        group.loc[group["_merge"] == 'left_only'][column_mapping["product_column"]] = group.loc[group["_merge"] == 'left_only'][column_mapping["product_column"]].ffill()
+        print(group)
         group.drop(columns=["_merge"], inplace=True)
+
+        # if group[column_mapping["quantity_sold_column"] ,column_mapping["price_column"], column_mapping["product_column"]].isna().any().any():
+        #     return False
 
         return group
 
-    product_sales = data.groupby([column_mapping["product_column"], column_mapping["date_column"]],
+    daily_product_sales = data.groupby([column_mapping["product_column"], column_mapping["date_column"]],
                                         as_index=False).agg(
         {
             column_mapping["price_column"]: 'mean',
             column_mapping["quantity_sold_column"]: 'sum'
         })
-    product_sales = product_sales.groupby(column_mapping["product_column"]).apply(
+    daily_product_sales = daily_product_sales.groupby(column_mapping["product_column"]).apply(
         lambda group: fill_missing_date_range_per_group(group, column_mapping))
-    product_sales.reset_index(drop=True, inplace=True)
+    daily_product_sales.reset_index(drop=True, inplace=True)
 
 
-    return daily_store_sales, product_sales
+    return daily_store_sales, daily_product_sales
 
 def split_training_testing_data(data, column_mapping):
     # 70 : 30 split
     # convert date column to datetime
-    # data[column_mapping["date_column"]] = pd.to_datetime(data[column_mapping["date_column"]], errors="coerce")
     date_column = column_mapping["date_column"]
-    product_column = column_mapping["product_column"]
     data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
     data[date_column] = data[date_column].dt.tz_localize(None)
 
@@ -150,7 +150,10 @@ def split_training_testing_data(data, column_mapping):
 
     train = data[data[date_column] < end_train_date]
     test = data[data[date_column] > end_train_date]
-    test = test[test[product_column].isin(train[product_column].unique())]
+
+    product_column = column_mapping["product_column"]
+    if product_column in train.columns and product_column in test.columns:
+        test = test[test[product_column].isin(train[product_column].unique())]
 
     return train, test
 
