@@ -2,7 +2,7 @@ import streamlit as st
 from App.utils.session_manager import SessionManager
 import pandas as pd
 
-from App.utils.data_preprocessing import format_dates, fill_missing_date_range_product_group, convert_to_dict, concatenate_exogenous_data
+from App.utils.data_preprocessing import format_dates, convert_to_dict, concatenate_exogenous_data
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -41,36 +41,50 @@ else:
     else:
         st.error(json_response.text)
 
+    st.write("Fixing Dates - e.g filling missing dates")
+    json_response = SessionManager.fast_api("fix_dates_and_split_into_product_sales_and_daily_sales_api", data=json_response.json(),
+                                            column_mapping=column_mapping)
+    if json_response.status_code == 200:
+        st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(json_response.json()['daily_store_sales'])}, Product Sales Size: {len(json_response.json()['product_sales'])}")
+    else:
+        st.error(json_response.text)
+
     st.write("Splitting into Train, Test")
     json_response = SessionManager.fast_api("train_test_split_api", data=json_response.json(),
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Split Dataset Train Size: {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
+        st.success(f"Successfully Split Dataset  {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
     else:
         st.error(json_response.text)
 
     st.write("Numerically Encoded Product ID")
-    json_response = SessionManager.fast_api("encode_product_column_call", train=json_response.json()['train'], test=json_response.json()['test'], column_mapping=column_mapping)
+    json_response = SessionManager.fast_api("encode_product_column_call",
+                                            train_daily_store_sales=json_response.json()["train_daily_store_sales"],
+                                            test_daily_store_sales=json_response.json()["test_daily_store_sales"],
+                                            train_product_sales=json_response.json()["train_product_sales"],
+                                            test_product_sales=json_response.json()["test_product_sales"],
+                                            column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Encoded Product IDs Train Size: {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
+        st.success(f"Successfully Encoded Product IDs Train Daily Sales Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
     else:
         st.error(json_response.text)
 
     st.write("Handling Missing Values ")
-    json_response = SessionManager.fast_api("handle_missing_values_api", train=json_response.json()['train'], test=json_response.json()['test'], column_mapping=column_mapping)
+    json_response = SessionManager.fast_api("handle_missing_values_api",
+                                            train_daily_store_sales=json_response.json()["train_daily_store_sales"],
+                                            test_daily_store_sales=json_response.json()["test_daily_store_sales"],
+                                            train_product_sales=json_response.json()["train_product_sales"],
+                                            test_product_sales=json_response.json()["test_product_sales"],
+                                            column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Handled Missing Values Train Size: {len(json_response.json()['train'])} Test Size: {len(json_response.json()['test'])}")
+        st.success(f"Successfully Handled Missing Values Train Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
     else:
         st.error(json_response.text)
 
     st.write("Processing Dates in the Correct Format")
-    train, test = pd.DataFrame(json_response.json()["train"]), pd.DataFrame(json_response.json()["test"])
-    train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = format_dates(train, test, column_mapping)
-    st.success(f"Successfully Formatted Dates Train Size: {len(train)} Test Size: {len(test)}")
-
-    st.write("train", len(train))
-
-    st.write("test", len(test))
+    train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = pd.DataFrame(json_response.json()["train_daily_store_sales"]), pd.DataFrame(json_response.json()["test_daily_store_sales"]), pd.DataFrame(json_response.json()["train_product_sales"]), pd.DataFrame(json_response.json()["test_product_sales"])
+    train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales = format_dates(train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales,  column_mapping)
+    st.success(f"Successfully Formatted Dates Train Size: {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Sales Size: {len(json_response.json()['train_product_sales'])}, Test Product Sales Size: {len(json_response.json()['test_product_sales'])}")
 
     st.write("Concatenating Exogenous Variables")
     selected_region = SessionManager.get_state("region")

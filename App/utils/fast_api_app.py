@@ -7,7 +7,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
-from App.utils.data_preprocessing import transform_data, handle_outliers, format_dates, split_training_testing_data, encode_product_column, handle_missing_values
+from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, encode_product_column, handle_missing_values
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, predict
 from datetime import datetime
 from App.utils.session_manager import SessionManager
@@ -26,12 +26,15 @@ class InputData(BaseModel):
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
     y_test: Optional[Dict[int, Any]] = None
+    daily_store_sales: Optional[Dict[int, Any]] = None
+    daily_product_sales: Optional[Dict[int, Any]] = None
     seasonality: Optional[conint(gt=0)] = None
     test_forecast_steps: Optional[conint(gt=0)] = None
     model_path : Optional[str] = None
     product_name: Optional[str] = None
     model_one : Optional[str] = None
     model_two : Optional[str] = None
+
 
 
 ## Pre Processing
@@ -54,16 +57,39 @@ def handle_outliers_api(received_data: InputData):
         return handle_outliers(data, column_mapping).to_dict(orient="records")
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-@app.post("/train_test_split_api")
-def train_test_split_api(received_data: InputData):
+
+
+@app.post("/fix_dates_and_split_into_product_sales_and_daily_sales_api")
+def fix_dates_and_split_into_product_sales_and_daily_sales_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
 
-        train, test = split_training_testing_data(data, column_mapping)
+        daily_store_sales, product_sales = fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
+        daily_store_sales, product_sales = convert_to_dict(daily_store_sales), convert_to_dict(product_sales)
         return {
-            "train": train.to_dict(orient="records"),
-            "test": test.to_dict(orient="records")
+            "daily_store_sales": daily_store_sales,
+        "product_sales": product_sales,
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/train_test_split_api")
+def train_test_split_api(received_data: InputData):
+    try:
+        daily_store_sales = pd.DataFrame(received_data.daily_store_sales)
+        daily_product_sales = pd.DataFrame(received_data.daily_product_sales)
+
+        column_mapping = received_data.column_mapping
+
+        train_daily_store_sales, test_daily_store_sales = split_training_testing_data(daily_store_sales, column_mapping)
+        train_daily_product_sales, test_daily_product_sales = split_training_testing_data(daily_product_sales, column_mapping)
+
+        return {
+            "train_daily_store_sales": train_daily_store_sales.to_dict(orient="records"),
+            "test_daily_store_sales": test_daily_store_sales.to_dict(orient="records"),
+            "train_daily_product_sales": train_daily_product_sales.to_dict(orient="records"),
+            "test_daily_product_sales": test_daily_product_sales.to_dict(orient="records"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -72,47 +98,45 @@ def train_test_split_api(received_data: InputData):
 @app.post("/encode_product_column_call")
 def encode_product_column_call(received_data: InputData):
     try:
-        train = pd.DataFrame(received_data.train)
-        test = pd.DataFrame(received_data.test)
+        train_daily_store_sales = pd.DataFrame(received_data.train_daily_store_sales)
+        test_daily_store_sales = pd.DataFrame(received_data.test_daily_store_sales)
+        train_daily_product_sales = pd.DataFrame(received_data.train_daily_product_sales)
+        test_daily_product_sales = pd.DataFrame(received_data.test_daily_product_sales)
         column_mapping = received_data.column_mapping
 
-        train, test = encode_product_column(train, test, column_mapping)
+
+        train_daily_store_sales, test_daily_store_sales = encode_product_column(train_daily_store_sales, test_daily_store_sales, column_mapping)
+        train_daily_product_sales, test_daily_product_sales = encode_product_column(train_daily_product_sales, test_daily_product_sales, column_mapping)
 
         return {
-            "train": train.to_dict(orient="records"),
-            "test": test.to_dict(orient="records")
+            "train_daily_store_sales": train_daily_store_sales.to_dict(orient="records"),
+            "test_daily_store_sales": test_daily_store_sales.to_dict(orient="records"),
+            "train_daily_product_sales": train_daily_product_sales.to_dict(orient="records"),
+            "test_daily_product_sales": test_daily_product_sales.to_dict(orient="records"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @app.post("/handle_missing_values_api")
 def handle_missing_values_api(received_data: InputData):
     try:
-        train = pd.DataFrame(received_data.train)
-        test = pd.DataFrame(received_data.test)
+
+        train_daily_store_sales = pd.DataFrame(received_data.train_daily_store_sales)
+        test_daily_store_sales = pd.DataFrame(received_data.test_daily_store_sales)
+        train_daily_product_sales = pd.DataFrame(received_data.train_daily_product_sales)
+        test_daily_product_sales = pd.DataFrame(received_data.test_daily_product_sales)
         column_mapping = received_data.column_mapping
 
-        train, test = handle_missing_values(train, test, column_mapping)
+        train_daily_store_sales, test_daily_store_sales = handle_missing_values(train_daily_store_sales,
+                                                                                test_daily_store_sales, column_mapping)
+        train_daily_product_sales, test_daily_product_sales = handle_missing_values(train_daily_product_sales,
+                                                                                    test_daily_product_sales,
+                                                                                    column_mapping)
 
         return {
-            "train": train.to_dict(orient="records"),
-            "test": test.to_dict(orient="records")
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@app.post("/format_dates_api")
-def format_dates_api(received_data: InputData):
-    try:
-        train = pd.DataFrame(received_data.train)
-        test = pd.DataFrame(received_data.test)
-
-        column_mapping = received_data.column_mapping
-
-        train, test = format_dates(train, test, column_mapping)
-        return {
-            "train": train.to_dict(orient="records"),
-            "test": test.to_dict(orient="records")
+            "train_daily_store_sales": train_daily_store_sales.to_dict(orient="records"),
+            "test_daily_store_sales": test_daily_store_sales.to_dict(orient="records"),
+            "train_daily_product_sales": train_daily_product_sales.to_dict(orient="records"),
+            "test_daily_product_sales": test_daily_product_sales.to_dict(orient="records"),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -179,8 +203,6 @@ def fit_and_store_arimax_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"arimax_model_path": arimax_model_path}
-
-
 def fit_and_store_sarimax_model(received_data: InputData):
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
@@ -222,7 +244,6 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
         fitted_sarimax = loop.run_in_executor(executor, fit_and_store_sarimax_model, received_data)
         arimax, sarimax = await asyncio.gather(fitted_arimax, fitted_sarimax)
         return {"arimax": arimax, "sarimax": sarimax}
-
 
 # Model Predictions
 @app.post("/predict_train_test_api")
