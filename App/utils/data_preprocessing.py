@@ -1,9 +1,13 @@
+from time import process_time
+
 import numpy as np
 import streamlit as st
 import pandas as pd
 from category_encoders import TargetEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
+from sklearn.preprocessing import StandardScaler
+
 from App.utils.session_manager import SessionManager
 from App.utils.data_handling import read_file
 
@@ -206,7 +210,8 @@ def format_dates(train, test, column_mapping):
 
     return train, test
 
-def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_product_sales, test_product_sales, column_mapping):
+def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales,
+                               train_daily_product_sales, test_daily_product_sales, column_mapping):
     if selected_region == "UK":
         exogenous_data = read_file("App/AppMaintenance/raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv")
         exog_date_column = "Date"
@@ -219,9 +224,9 @@ def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_da
                                                      on=column_mapping["date_column"], how='left')
         test_daily_store_sales_with_exog = pd.merge(test_daily_store_sales, exogenous_data,
                                                     on=column_mapping["date_column"], how='left')
-        train_product_sales_with_exog = pd.merge(train_product_sales, exogenous_data,
-                                                 on=column_mapping["date_column"], how='left')
-        test_product_sales_with_exog = pd.merge(test_product_sales, exogenous_data,
+        train_product_sales_with_exog = pd.merge(train_daily_product_sales, exogenous_data,
+                                                 on=column_mapping["date_column"], how='left') # since it has many same dates will it merge correctly due to diff products
+        test_product_sales_with_exog = pd.merge(test_daily_product_sales, exogenous_data,
                                                 on=column_mapping["date_column"], how='left')
 
         return train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog
@@ -238,15 +243,81 @@ def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_da
                                                      on=column_mapping["date_column"], how='left')
         test_daily_store_sales_with_exog = pd.merge(test_daily_store_sales, exogenous_data,
                                                     on=column_mapping["date_column"], how='left')
-        train_product_sales_with_exog = pd.merge(train_product_sales, exogenous_data,
+        train_product_sales_with_exog = pd.merge(train_daily_product_sales, exogenous_data,
                                                  on=column_mapping["date_column"], how='left')
-        test_product_sales_with_exog = pd.merge(test_product_sales, exogenous_data,
+        test_product_sales_with_exog = pd.merge(test_daily_product_sales, exogenous_data,
                                                 on=column_mapping["date_column"], how='left')
 
 
         return train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog
 
 # scale exog X only, robust scaler to prevent outliers, MINMAX for fixed range, standard scaler for normal distribution - prioritise standard scaler mostly
+def scale_exogenous_data(
+        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
+        test_product_sales_with_exog, column_mapping):
+
+    train_daily_store_sales_with_exog_scaled = train_daily_store_sales_with_exog.copy()
+    train_daily_store_sales_with_exog_scaled.drop(columns=[column_mapping["date_column"], column_mapping["quantity_sold_column"]], inplace=True)
+
+    test_daily_store_sales_with_exog_scaled = test_daily_store_sales_with_exog.copy()
+    test_daily_store_sales_with_exog_scaled.drop(columns=[column_mapping["date_column"], column_mapping["quantity_sold_column"]], inplace=True)
+
+    store_scaler = StandardScaler()
+
+    store_scaler.fit(train_daily_store_sales_with_exog_scaled)
+
+    train_daily_store_sales_with_exog_scaled = store_scaler.transform(train_daily_store_sales_with_exog_scaled)
+    test_daily_store_sales_with_exog_scaled = store_scaler.transform(test_daily_store_sales_with_exog_scaled)
+
+    train_product_sales_with_exog_scaled = train_product_sales_with_exog.copy()
+    train_product_sales_with_exog_scaled.drop(columns=list(column_mapping.values()), inplace=True)
+
+    test_product_sales_with_exog_scaled = test_product_sales_with_exog.copy()
+    test_product_sales_with_exog_scaled.drop(columns=list(column_mapping.values()), inplace=True)
+
+    product_scaler = StandardScaler()
+
+    product_scaler.fit(train_product_sales_with_exog_scaled)
+
+    train_product_sales_with_exog_scaled = product_scaler.transform(train_product_sales_with_exog_scaled)
+    test_product_sales_with_exog_scaled = product_scaler.transform(test_product_sales_with_exog_scaled)
+
+    # combine with original columns, ignoring old exog features
+
+    train_daily_store_sales_with_exog_scaled[column_mapping.values()] = train_daily_store_sales_with_exog[column_mapping.values()]
+    test_daily_store_sales_with_exog_scaled[column_mapping.values()] = test_daily_store_sales_with_exog[column_mapping.values()]
+
+    train_product_sales_with_exog_scaled[column_mapping.values()] = train_product_sales_with_exog[column_mapping.values()]
+    test_product_sales_with_exog_scaled[column_mapping.values()] = test_product_sales_with_exog[column_mapping.values()]
+
+
+    return train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled
+
+def add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
+                     train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled, column_mapping):
+
+    train_daily_store_sales_with_exog_scaled["-1day"] = train_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1)
+    train_daily_store_sales_with_exog_scaled["-2day"] = train_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2)
+    train_daily_store_sales_with_exog_scaled["-3day"] = train_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3)
+
+    test_daily_store_sales_with_exog_scaled["-1day"] = test_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1)
+    test_daily_store_sales_with_exog_scaled["-2day"] = test_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2)
+    test_daily_store_sales_with_exog_scaled["-3day"] = test_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3)
+
+    train_product_sales_with_exog_scaled["-1day"] = train_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1)
+    train_product_sales_with_exog_scaled["-2day"] = train_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2)
+    train_product_sales_with_exog_scaled["-3day"] = train_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3)
+
+    test_product_sales_with_exog_scaled["-1day"] = test_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1)
+    test_product_sales_with_exog_scaled["-2day"] = test_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2)
+    test_product_sales_with_exog_scaled["-3day"] = test_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3)
+
+    return train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled
+
+
+
+
+
 
 
 
