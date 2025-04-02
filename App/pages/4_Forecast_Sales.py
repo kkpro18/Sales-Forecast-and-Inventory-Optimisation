@@ -84,6 +84,7 @@ else:
         st.write(f"### {product_name} Train Samples: {len(train_product_sales_grouped.get_group(product_name))}, Test Samples: {len(test_product_sales_grouped.get_group(product_name))}")
         train_product_data = train_product_sales_grouped.get_group(product_name)
         test_product_data = test_product_sales_grouped.get_group(product_name)
+
         if len(train_product_data) < 10:
             st.warning("Not enough data for this product to train the model.")
 
@@ -96,8 +97,8 @@ else:
         )
         asyncio.run(
             predict_sales_multivariate(
-                train_daily_store_sales,
-                test_daily_store_sales,
+                train_product_sales_with_exog_grouped.get_group(product_name),
+                test_product_sales_with_exog_grouped.get_group(product_name),
                 column_mapping,
                 product_name=test_product_names[SessionManager.get_state("product_index")]
             )
@@ -124,7 +125,8 @@ else:
             )
             asyncio.run(
                 predict_sales_multivariate(
-                    train_daily_store_sales, test_daily_store_sales,
+                    train_product_sales_with_exog_grouped.get_group(product_name),
+                    test_product_sales_with_exog_grouped.get_group(product_name),
                     column_mapping,
                     product_name=test_product_names[SessionManager.get_state("product_index")]
                 )
