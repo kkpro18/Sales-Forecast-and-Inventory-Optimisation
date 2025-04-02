@@ -7,7 +7,7 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
-from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, encode_product_column, handle_missing_values
+from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, handle_missing_values
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, predict
 from datetime import datetime
 from App.utils.session_manager import SessionManager
@@ -24,6 +24,10 @@ class InputData(BaseModel):
     test : Optional[List[Dict[str, Any]]] = None
     daily_store_sales: Optional[List[Dict[str, Any]]] = None
     daily_product_sales: Optional[List[Dict[str, Any]]] = None
+    train_daily_store_sales: Optional[List[Dict[str, Any]]] = None
+    test_daily_store_sales: Optional[List[Dict[str, Any]]] = None
+    train_daily_product_sales: Optional[List[Dict[str, Any]]] = None
+    test_daily_product_sales: Optional[List[Dict[str, Any]]] = None
     X_train: Optional[List[Dict[str, Any]]] = None
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
@@ -95,28 +99,6 @@ def train_test_split_api(received_data: InputData):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
-
-@app.post("/encode_product_column_call")
-def encode_product_column_call(received_data: InputData):
-    try:
-        train_daily_store_sales = pd.DataFrame(received_data.train_daily_store_sales)
-        test_daily_store_sales = pd.DataFrame(received_data.test_daily_store_sales)
-        train_daily_product_sales = pd.DataFrame(received_data.train_daily_product_sales)
-        test_daily_product_sales = pd.DataFrame(received_data.test_daily_product_sales)
-        column_mapping = received_data.column_mapping
-
-
-        train_daily_store_sales, test_daily_store_sales = encode_product_column(train_daily_store_sales, test_daily_store_sales, column_mapping)
-        train_daily_product_sales, test_daily_product_sales = encode_product_column(train_daily_product_sales, test_daily_product_sales, column_mapping)
-
-        return {
-            "train_daily_store_sales": train_daily_store_sales.to_dict(orient="records"),
-            "test_daily_store_sales": test_daily_store_sales.to_dict(orient="records"),
-            "train_daily_product_sales": train_daily_product_sales.to_dict(orient="records"),
-            "test_daily_product_sales": test_daily_product_sales.to_dict(orient="records"),
-        }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
 @app.post("/handle_missing_values_api")
 def handle_missing_values_api(received_data: InputData):
     try:
@@ -141,6 +123,7 @@ def handle_missing_values_api(received_data: InputData):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
 
 # Model Fitting
 

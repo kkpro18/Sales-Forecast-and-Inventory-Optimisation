@@ -108,17 +108,17 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
     def fill_missing_date_range_per_group(group, column_mapping):
         product_date_range = pd.date_range(start=group[column_mapping["date_column"]].min(),
                                            end=group[column_mapping["date_column"]].max(), freq='D')
+
         product_daily_dates_df = pd.DataFrame(product_date_range, columns=[column_mapping["date_column"]])
         group = pd.merge(product_daily_dates_df, group, on=column_mapping["date_column"], how='left', indicator=True)
 
-        group.loc[group["_merge"] == 'left_only'][column_mapping["quantity_sold_column"]] = 0
-        group.loc[group["_merge"] == 'left_only'][column_mapping["price_column"]] = group.loc[group["_merge"] == 'left_only'][column_mapping["price_column"]].ffill()
-        group.loc[group["_merge"] == 'left_only'][column_mapping["product_column"]] = group.loc[group["_merge"] == 'left_only'][column_mapping["product_column"]].ffill()
-        print(group)
-        group.drop(columns=["_merge"], inplace=True)
+        average_product_price = round(group.loc[group["_merge"] == 'both'][column_mapping["price_column"]].mean(),2)
+        most_frequent_product = group.loc[group["_merge"] == 'both'][column_mapping["product_column"]].mode()[0]
 
-        # if group[column_mapping["quantity_sold_column"] ,column_mapping["price_column"], column_mapping["product_column"]].isna().any().any():
-        #     return False
+        group.loc[group["_merge"] == 'left_only', column_mapping["price_column"]] = average_product_price
+        group.loc[group["_merge"] == 'left_only', column_mapping["product_column"]] = most_frequent_product
+        group.loc[group["_merge"] == 'left_only', column_mapping["quantity_sold_column"]] = 0
+        group.drop(columns=["_merge"], inplace=True)
 
         return group
 
@@ -156,28 +156,6 @@ def split_training_testing_data(data, column_mapping):
         test = test[test[product_column].isin(train[product_column].unique())]
 
     return train, test
-
-def encode_product_column(train, test, column_mapping):
-    product_column = column_mapping["product_column"]
-    quantity_sold_column = column_mapping["quantity_sold_column"]
-
-    target_encoder = TargetEncoder(cols=product_column)
-
-    target_encoder.fit(train[product_column], train[quantity_sold_column])
-
-    train["product_encoded"] = target_encoder.transform(train[product_column])
-    test["product_encoded"] = target_encoder.transform(test[product_column])
-
-    train_product_encoder_map = dict(zip(train[product_column], train['product_encoded']))
-    test_product_encoder_map = dict(zip(test[product_column], test['product_encoded']))
-
-    SessionManager.set_state("train_product_encoder_map", train_product_encoder_map)
-    SessionManager.set_state("test_product_encoder_map", test_product_encoder_map)
-
-    # st.write("Target Encoded Result ", uploaded_dataset.sort_values(units_sold_column, ascending=True).head(5))
-    st.success("Product Column has been successfully encoded")
-    return train, test
-
 def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
