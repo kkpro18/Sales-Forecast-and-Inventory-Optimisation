@@ -7,8 +7,10 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
+from sktime.utils.mlflow_sktime import load_model
+
 from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, handle_missing_values
-from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, predict
+from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, fit_fb_prophet_model, fit_fb_prophet_model_with_exog, predict
 from datetime import datetime
 from App.utils.session_manager import SessionManager
 
@@ -28,12 +30,15 @@ class InputData(BaseModel):
     test_daily_store_sales: Optional[List[Dict[str, Any]]] = None
     train_daily_product_sales: Optional[List[Dict[str, Any]]] = None
     test_daily_product_sales: Optional[List[Dict[str, Any]]] = None
+    train_data : Optional[List[Dict[str, Any]]] = None
+    test_data : Optional[List[Dict[str, Any]]] = None
     X_train: Optional[List[Dict[str, Any]]] = None
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
     y_test: Optional[Dict[int, Any]] = None
     seasonality: Optional[conint(gt=0)] = None
     test_forecast_steps: Optional[conint(gt=0)] = None
+    model_name : Optional[str] = None
     model_path : Optional[str] = None
     product_name: Optional[str] = None
     model_one : Optional[str] = None
@@ -48,8 +53,7 @@ def transform_data_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
-
-        return transform_data(data, column_mapping).to_dict(orient="records")
+        return convert_to_dict(transform_data(data, column_mapping))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @app.post("/handle_outliers_api")
@@ -58,11 +62,9 @@ def handle_outliers_api(received_data: InputData):
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
 
-        return handle_outliers(data, column_mapping).to_dict(orient="records")
+        return convert_to_dict(handle_outliers(data, column_mapping))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-
-
 @app.post("/fix_dates_and_split_into_product_sales_and_daily_sales_api")
 def fix_dates_and_split_into_product_sales_and_daily_sales_api(received_data: InputData):
     try:
@@ -91,10 +93,10 @@ def train_test_split_api(received_data: InputData):
         train_daily_product_sales, test_daily_product_sales = split_training_testing_data(daily_product_sales, column_mapping)
 
         return {
-            "train_daily_store_sales": train_daily_store_sales.to_dict(orient="records"),
-            "test_daily_store_sales": test_daily_store_sales.to_dict(orient="records"),
-            "train_daily_product_sales": train_daily_product_sales.to_dict(orient="records"),
-            "test_daily_product_sales": test_daily_product_sales.to_dict(orient="records"),
+            "train_daily_store_sales": convert_to_dict(train_daily_store_sales),
+            "test_daily_store_sales": convert_to_dict(test_daily_store_sales),
+            "train_daily_product_sales": convert_to_dict(train_daily_product_sales),
+            "test_daily_product_sales": convert_to_dict(test_daily_product_sales),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -116,10 +118,10 @@ def handle_missing_values_api(received_data: InputData):
                                                                                     column_mapping)
 
         return {
-            "train_daily_store_sales": train_daily_store_sales.to_dict(orient="records"),
-            "test_daily_store_sales": test_daily_store_sales.to_dict(orient="records"),
-            "train_daily_product_sales": train_daily_product_sales.to_dict(orient="records"),
-            "test_daily_product_sales": test_daily_product_sales.to_dict(orient="records"),
+            "train_daily_store_sales": convert_to_dict(train_daily_store_sales),
+            "test_daily_store_sales": convert_to_dict(test_daily_store_sales),
+            "train_daily_product_sales": convert_to_dict(train_daily_product_sales),
+            "test_daily_product_sales": convert_to_dict(test_daily_product_sales),
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -128,7 +130,7 @@ def handle_missing_values_api(received_data: InputData):
 # Model Fitting
 
 # Methods to fit models
-def fit_and_store_arima_model(received_data: InputData):
+def store_arima_model(received_data: InputData):
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
             raise ValueError("y_train is missing / empty")
@@ -146,7 +148,7 @@ def fit_and_store_arima_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"arima_model_path": arima_model_path}
-def fit_and_store_sarima_model(received_data: InputData):
+def store_sarima_model(received_data: InputData):
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
             raise ValueError("y_train is missing / empty")
@@ -168,7 +170,7 @@ def fit_and_store_sarima_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"sarima_model_path": sarima_model_path}
-def fit_and_store_arimax_model(received_data: InputData):
+def store_arimax_model(received_data: InputData):
     try:
         if not received_data.y_train or len(received_data.y_train) == 0 or not received_data.X_train or len(received_data.X_train) == 0:
             raise ValueError("y_train or X_train is missing / empty")
@@ -187,7 +189,7 @@ def fit_and_store_arimax_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"arimax_model_path": arimax_model_path}
-def fit_and_store_sarimax_model(received_data: InputData):
+def store_sarimax_model(received_data: InputData):
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
             raise ValueError("y_train is missing / empty")
@@ -211,6 +213,44 @@ def fit_and_store_sarimax_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"sarimax_model_path": sarimax_model_path}
+def store_fb_prophet_model(received_data: InputData):
+    try:
+        if not received_data.y_train or len(received_data.y_train) == 0:
+            raise ValueError("y_train is missing / empty")
+        if received_data.seasonality is None:
+            raise ValueError("seasonality is missing.")
+
+        full_data = pd.DataFrame(received_data.data)
+        prophet_model = fit_fb_prophet_model(full_data)
+
+        date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        if received_data.product_name is not None:
+            prophet_model_path = f'models/prophet{received_data.product_name}_{date_timestamp}.pkl'
+        else:
+            prophet_model_path = f'models/prophet{date_timestamp}.pkl'
+        save_model(prophet_model, prophet_model_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return {"fb_prophet_model_path": prophet_model_path}
+def store_fb_prophet_model_with_exog(received_data: InputData):
+    try:
+        if not received_data.data or len(received_data.data) == 0:
+            raise ValueError("data is missing / empty")
+
+        full_data = pd.DataFrame(received_data.data)
+        prophet_model = fit_fb_prophet_model(full_data)
+
+        date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
+        if received_data.product_name is not None:
+            prophet_model_path = f'models/prophet_with_exog_{received_data.product_name}_{date_timestamp}.pkl'
+        else:
+            prophet_model_path = f'models/prophet_with_exog_{date_timestamp}.pkl'
+        save_model(prophet_model, prophet_model_path)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        return {"fb_prophet_with_exog_model_path": prophet_model_path}
 
 
 # API Endpoint for fitting models in Parallel
@@ -218,31 +258,56 @@ def fit_and_store_sarimax_model(received_data: InputData):
 async def fit_models_in_parallel_api(received_data: InputData): # https://blog.stackademic.com/fastapi-parallel-processing-1eaa67981ab9
     loop = asyncio.get_running_loop()
     if received_data.model_one == "arima" and received_data.model_two == "sarima":
-        fitted_arima = loop.run_in_executor(executor, fit_and_store_arima_model, received_data)
-        fitted_sarima = loop.run_in_executor(executor, fit_and_store_sarima_model, received_data)
+        fitted_arima = loop.run_in_executor(executor, store_arima_model, received_data)
+        fitted_sarima = loop.run_in_executor(executor, store_sarima_model, received_data)
         arima, sarima = await asyncio.gather(fitted_arima, fitted_sarima)
         return {"arima": arima,"sarima": sarima}
 
     elif received_data.model_one == "arimax" and received_data.model_two == "sarimax":
-        fitted_arimax = loop.run_in_executor(executor, fit_and_store_arimax_model, received_data)
-        fitted_sarimax = loop.run_in_executor(executor, fit_and_store_sarimax_model, received_data)
+        fitted_arimax = loop.run_in_executor(executor, store_arimax_model, received_data)
+        fitted_sarimax = loop.run_in_executor(executor, store_sarimax_model, received_data)
         arimax, sarimax = await asyncio.gather(fitted_arimax, fitted_sarimax)
         return {"arimax": arimax, "sarimax": sarimax}
+
+    elif received_data.model_one == "fb_prophet" and received_data.model_two == "fb_prophet_with_exog":
+        fitted_fb_prophet = loop.run_in_executor(executor, store_fb_prophet_model, received_data)
+        fitted_fb_prophet_with_exog = loop.run_in_executor(executor, store_fb_prophet_model_with_exog, received_data)
+        fb_prophet, fb_prophet_with_exog = await asyncio.gather(fitted_fb_prophet, fitted_fb_prophet_with_exog)
+        return {"fb_prophet": fb_prophet, "fb_prophet_with_exog": fb_prophet_with_exog}
 
 # Model Predictions
 @app.post("/predict_train_test_api")
 def predict_train_test_api(received_data: InputData):
     try:
-        test_forecast_steps = received_data.test_forecast_steps
-        model_path = received_data.model_path
-
         if received_data.model_path is None:
             raise ValueError("Model path is None")
-        if test_forecast_steps <= 0:
-            raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
+        model_path = received_data.model_path
 
-        y_train_prediction = predict(model_path=model_path)
-        y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
+        if received_data.model_name is None or received_data.model_name == "arima" or received_data.model_name == "sarima":
+            test_forecast_steps = received_data.test_forecast_steps
+
+            if test_forecast_steps <= 0:
+                raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
+
+            y_train_prediction = predict(model_path=model_path)
+            y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
+        elif received_data.model_name == "fb_prophet" or received_data.model_name == "fb_prophet_with_exog":
+            train_data = received_data.train_data
+            test_data = received_data.test_data
+
+            y_train_prediction = load_model(model_path).predict(train_data)
+            y_test_prediction = load_model(model_path).predict(test_data)
+        else:
+            test_forecast_steps = received_data.test_forecast_steps
+            if test_forecast_steps <= 0:
+                raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
+            train_exog_features = pd.DataFrame(received_data.X_train).drop(columns=received_data.column_mapping.values(), errors="ignore")
+            test_exog_features = pd.DataFrame(received_data.X_test).drop(columns=received_data.column_mapping.values(), errors="ignore")
+            # print(train_exog_features)
+            # print(test_exog_features)
+
+            y_train_prediction = predict(model_path=model_path, exog=train_exog_features)
+            y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, exog=test_exog_features)
 
         if SessionManager.get_state("is_log_transformed"):
 

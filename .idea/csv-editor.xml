@@ -10,7 +10,35 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/UK_BoE_Bank_Rate.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/App/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/USA/USA_Unemployment_Rate_1948_2024.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/USA/USA_interest-rates-2000-2024.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/data/kaggle.com_datasets_fahadrehman07_retail-transaction-dataset/Retail_Transaction_Dataset.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
@@ -39,6 +67,13 @@
           </value>
         </entry>
         <entry key="/Z_Experiments/1_datasets/archive.ics.uci.edu--online+retail+ii/online_retail_II_2009_2010.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/Z_Experiments/1_datasets/kaggle.com_datasets_tanayatipre_store-sales-forecasting-dataset/stores_sales_forecasting.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />
