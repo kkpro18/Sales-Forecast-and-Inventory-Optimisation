@@ -2,8 +2,7 @@ import streamlit as st
 from App.utils.session_manager import SessionManager
 import pandas as pd
 
-from App.utils.data_preprocessing import format_dates, convert_to_dict, concatenate_exogenous_data, \
-    scale_exogenous_data, add_lag_features
+from App.utils.data_preprocessing import format_dates, convert_to_dict, concatenate_exogenous_data, scale_exogenous_data, add_lag_features
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -92,24 +91,14 @@ else:
     st.write("Scaling Exogenous Variables")
     selected_region = SessionManager.get_state("region")
     if SessionManager.get_state("region") != "N/A":
-        st.write("Train Daily Store Sales columns", train_daily_store_sales.columns)
-        st.write("Train Daily Store Sales with exog columns", train_daily_store_sales_with_exog.columns)
-
-        st.write("Test Daily Store Sales columns", test_daily_store_sales.columns)
-        st.write("Test Daily Store Sales with exog columns", test_daily_store_sales_with_exog.columns)
-
-        st.write("Train Daily Product Sales columns", train_daily_product_sales.columns)
-        st.write("Train Daily Product Sales with exog columns", train_daily_product_sales_with_exog.columns)
-
-        st.write("Test Daily Product Sales columns", test_daily_product_sales.columns)
-        st.write("Test Daily Product Sales with exog columns", test_daily_product_sales_with_exog.columns)
-
         train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled = scale_exogenous_data(train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog, column_mapping)
     st.success(f"Successfully scaled Exogenous Features")
 
     st.write("Adding Lag Features")
     train_daily_store_sales_with_exog_lagged, test_daily_store_sales_with_exog_lagged, train_daily_product_sales_with_exog_lagged, test_daily_product_sales_with_exog_lagged = add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled, column_mapping)
     st.success(f"Successfully scaled Exogenous Features")
+
+    st.dataframe(train_daily_product_sales_with_exog_scaled)
 
 
     SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)
@@ -141,16 +130,6 @@ else:
 
 
     st.balloons()
-
-    # os.makedirs("store_sales", exist_ok=True)
-    # daily_store_sales.to_csv("store_sales/daily_store_sales.csv", index=False)
-    # st.success(f"daily_store_sales saved")
-
-    # os.makedirs("product_sales", exist_ok=True)
-    # for product, group in product_sales.groupby(column_mapping["product_column"]):
-    #     file_name = f"product_sales/{product}_sales.csv"
-    #     group.to_csv(file_name, index=False)
-    #     st.success(f"Saved: {file_name}")
 
 
     # time.sleep(3)

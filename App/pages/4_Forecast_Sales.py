@@ -120,7 +120,7 @@ else:
                 predict_sales_univariate(
                     train_product_data, test_product_data,
                     column_mapping,
-                    product_name=test_product_names[SessionManager.get_state("product_index")]
+                    product_name=product_name
                 )
             )
             asyncio.run(
@@ -128,7 +128,7 @@ else:
                     train_product_sales_with_exog_grouped.get_group(product_name),
                     test_product_sales_with_exog_grouped.get_group(product_name),
                     column_mapping,
-                    product_name=test_product_names[SessionManager.get_state("product_index")]
+                    product_name=product_name
                 )
             )
 
