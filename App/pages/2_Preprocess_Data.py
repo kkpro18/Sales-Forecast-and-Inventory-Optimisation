@@ -53,6 +53,7 @@ else:
         st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(json_response.json()['daily_store_sales'])}, Product Sales Size: {len(json_response.json()['daily_product_sales'])}")
     else:
         st.error(json_response.text)
+    # st.write(pd.DataFrame(json_response.json()['daily_product_sales']))
 
     st.write("Splitting into Train, Test")
     json_response = SessionManager.fast_api("train_test_split_api",
@@ -98,7 +99,9 @@ else:
     train_daily_store_sales_with_exog_lagged, test_daily_store_sales_with_exog_lagged, train_daily_product_sales_with_exog_lagged, test_daily_product_sales_with_exog_lagged = add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled, column_mapping)
     st.success(f"Successfully scaled Exogenous Features")
 
-    st.dataframe(train_daily_product_sales_with_exog_scaled)
+    st.write(pd.DataFrame(train_daily_product_sales_with_exog_lagged))
+
+    # st.dataframe(train_daily_product_sales_with_exog_scaled)
 
 
     SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)

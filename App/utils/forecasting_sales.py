@@ -67,7 +67,7 @@ def fit_arimax_model(X_train, y_train):
 
 def fit_sarimax_model(X_train, y_train, seasonality):
 
-    sarima_model = pm.auto_arima(y=y_train,
+    sarimax_model = pm.auto_arima(y=y_train,
                                  X=X_train,
                                  seasonal=True, m=seasonality,
                                  trace=True,
@@ -77,7 +77,7 @@ def fit_sarimax_model(X_train, y_train, seasonality):
                                  scoring='mae',
                                  )
 
-    return sarima_model
+    return sarimax_model
 
 
 def fit_fb_prophet_model(full_data, column_mapping):
@@ -121,7 +121,7 @@ def predict(model_path, forecast_periods=None, model_name="", data=None, exog=No
 
     return predictions
 
-async def predict_sales_univariate(train, test, column_mapping, product_name=None):
+async def predict_sales_arima_sarima(train, test, column_mapping, product_name=None):
 
     features = column_mapping["date_column"]
     target = column_mapping["quantity_sold_column"]
@@ -136,7 +136,7 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
         # Predict ARIMA
         json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-                                                model_path=arima_model_path)
+                                                model_path=arima_model_path, model_name="arima")
         if json_response.status_code == 200:
             y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
             y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
@@ -153,7 +153,7 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
         # Predict SARIMA
         json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-                                                model_path=sarima_model_path)
+                                                model_path=sarima_model_path, model_name="sarima")
 
         if json_response.status_code == 200:
             y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
@@ -161,7 +161,7 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
             st.markdown("### SARIMA Model:")
             st.write(joblib.load(sarima_model_path).summary())
-            # st.write(joblib.load(sarima_model_path).params)
+            st.write(joblib.load(sarima_model_path).get_params())
 
             print_performance_metrics(y_train, y_train_prediction_sarima, y_test,
                                       y_test_prediction_sarima)
@@ -192,7 +192,7 @@ async def predict_sales_univariate(train, test, column_mapping, product_name=Non
 
     else:
         st.error(json_response.text)
-async def predict_sales_multivariate(train, test, column_mapping, product_name=None):
+async def predict_sales_arimax_sarimax(train, test, column_mapping, product_name=None):
     features = train.columns.tolist()
     features.remove(column_mapping["quantity_sold_column"])
     features.remove(column_mapping["date_column"])
@@ -209,12 +209,14 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
     # st.write("plot features are", plot_features)
     # st.write("x test", len(X_test))
     # st.write("y test", len(y_test))
-
+    if column_mapping["product_column"] in X_train_exog.columns:
+        X_train_exog.drop(column_mapping["product_column"], axis=1, inplace=True)
     json_response = SessionManager.fast_api("fit_models_in_parallel_api",
-                                            y_train=y_train.to_dict(),
-                                            X_train=X_train_exog.to_dict(orient='records'),
-                                            seasonality=SessionManager.get_state('selected_seasonality'),
-                                            product_name=product_name, model_one = "arimax", model_two = "sarimax")
+                                        y_train=y_train.to_dict(),
+                                        X_train=X_train_exog.to_dict(orient='records'),
+                                        seasonality=SessionManager.get_state('selected_seasonality'),
+                                        product_name=product_name, model_one = "arimax", model_two = "sarimax")
+
     if json_response.status_code == 200:
 
         arimax_model_path = json_response.json()["arimax"]["arimax_model_path"]
@@ -225,7 +227,7 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
         json_response = SessionManager.fast_api("predict_train_test_api",
                                                 test_forecast_steps=len(X_test_exog),
                                                 model_path=arimax_model_path,
-                                                model_name="ARIMAX",
+                                                model_name="arimax",
                                                 X_train=X_train_exog.to_dict(orient='records'),
                                                 X_test=X_test_exog.to_dict(orient='records'),
                                                 column_mapping=column_mapping)
@@ -235,7 +237,7 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
 
             st.markdown("### ARIMAX Model:")
             st.write(joblib.load(arimax_model_path).summary())
-            # st.write(joblib.load(arimax_model_path).params)
+            st.write(joblib.load(arimax_model_path).get_params())
 
             print_performance_metrics(y_train, y_train_prediction_arimax, y_test, y_test_prediction_arimax)
             plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax, column_mapping)
@@ -246,7 +248,7 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
         json_response = SessionManager.fast_api("predict_train_test_api",
                                                 test_forecast_steps=len(X_test_exog),
                                                 model_path=sarimax_model_path,
-                                                model_name="SARIMAX",
+                                                model_name="sarimax",
                                                 X_train=X_train_exog.to_dict(orient='records'),
                                                 X_test=X_test_exog.to_dict(orient='records'),
                                                 column_mapping=column_mapping)
@@ -257,7 +259,7 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
 
             st.markdown("### SARIMAX Model:")
             st.write(joblib.load(sarimax_model_path).summary())
-            # st.write(joblib.load(sarimax_model_path).params)
+            st.write(joblib.load(sarimax_model_path).get_params())
 
             print_performance_metrics(y_train, y_train_prediction_sarimax, y_test,
                                       y_test_prediction_sarimax)
@@ -283,7 +285,76 @@ async def predict_sales_multivariate(train, test, column_mapping, product_name=N
     else:
         st.error(json_response.text)
 
+async def predict_sales_fb_prophet_with_and_without_exog(train_with_exog, test_with_exog, column_mapping, product_name=None):
+    train_without_exog = train_with_exog[train_with_exog.columns.intersection(column_mapping.values())] # chooses only those columns
+    test_without_exog = test_with_exog[test_with_exog.columns.intersection(column_mapping.values())]
 
+    if product_name is not None:
+        train_with_exog.drop(column_mapping["product_column"], axis=1, inplace=True)
+    json_response = SessionManager.fast_api("fit_models_in_parallel_api",
+                                            data=train_without_exog.to_dict(orient='records'),
+                                            exog_data=train_with_exog.to_dict(orient='records'),
+                                            column_mapping=column_mapping,
+                                            product_name=product_name,
+                                            model_one="fb_prophet_with_exog",
+                                            model_two="fb_prophet_without_exog")
+
+    if json_response.status_code == 200:
+        fb_prophet_with_exog_model_path = json_response.json()["fb_prophet_with_exog"]["fb_prophet_with_exog_model_path"]
+        fb_prophet_without_exog_model_path = json_response.json()["fb_prophet_without_exog"]["fb_prophet_without_exog_model_path"]
+        # Predict fb_prophet with exog
+        X_train = train_with_exog.drop(column_mapping("quantity_sold_column"))
+        X_test = test_with_exog.drop(column_mapping("quantity_sold_column"))
+        y_train = train_with_exog[column_mapping("quantity_sold_column")]
+        y_test = test_with_exog[column_mapping("quantity_sold_column")]
+
+        json_response = SessionManager.fast_api("predict_train_test_api",
+                                                model_path=fb_prophet_with_exog_model_path,
+                                                model_name="fb_prophet_with_exog",
+                                                X_train=X_train.to_dict(orient='records'),
+                                                X_test=X_test.to_dict(orient='records'),
+                                                column_mapping = column_mapping)
+
+        if json_response.status_code == 200:
+            y_train_prediction_fb_prophet_with_exog = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_fb_prophet_with_exog = pd.Series(json_response.json()["y_test_prediction"])
+
+            st.markdown("### FB-Prophet Model With Exog Features:")
+            st.write(load_model(fb_prophet_with_exog_model_path).summary())
+            print_performance_metrics(y_train, y_train_prediction_fb_prophet_with_exog, y_test, y_test_prediction_fb_prophet_with_exog)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_fb_prophet_with_exog, column_mapping)
+        else:
+            st.error(json_response.text)
+
+        # Predict fb_prophet without exog
+        X_train, X_test, y_train, y_test = train_without_exog[column_mapping["date_column"]], test_without_exog[
+            column_mapping["date_column"]], train_without_exog[
+            column_mapping["quantity_sold_column"]], test_without_exog[column_mapping["quantity_sold_column"]]
+
+
+        json_response = SessionManager.fast_api("predict_train_test_api",
+                                                model_path=fb_prophet_without_exog_model_path,
+                                                model_name="fb_prophet_model_without_exog",
+                                                data=train_without_exog.to_dict(orient='records'),
+                                                column_mapping=column_mapping)
+
+        if json_response.status_code == 200:
+            y_train_prediction_fb_prophet_without_exog = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_fb_prophet_without_exog = pd.Series(json_response.json()["y_test_prediction"])
+
+            st.markdown("### FB-Prophet Model With Exog Features:")
+            st.write(joblib.load(fb_prophet_without_exog_model_path).summary())
+            print_performance_metrics(y_train,
+                                      y_train_prediction_fb_prophet_without_exog, y_test,
+                                      y_test_prediction_fb_prophet_without_exog)
+            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_fb_prophet_without_exog,
+                            column_mapping)
+        else:
+            st.error(json_response.text)
+
+
+    else:
+        st.error(json_response.text)
 
 def print_performance_metrics(y_train, y_train_prediction, y_test, y_test_prediction):
 
@@ -301,6 +372,7 @@ def print_performance_metrics(y_train, y_train_prediction, y_test, y_test_predic
         "Test: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_test_filtered, y_test_prediction_filtered), 4),
         "Train: Mean Absolute Scaled Error (MASE)":round(mean_absolute_scaled_error(y_train_filtered, y_train_prediction_filtered, y_train=y_train_filtered), 4),
         "Test: Mean Absolute Scaled Error (MASE)": round(mean_absolute_scaled_error(y_test_filtered, y_test_prediction_filtered, y_train=y_train_filtered), 4),
+
     }
     left, right = st.columns(2)
     for metric,value in performance_metrics.items():

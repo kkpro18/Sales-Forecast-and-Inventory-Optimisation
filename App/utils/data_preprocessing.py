@@ -285,14 +285,8 @@ def scale_exogenous_data(
     test_product_sales_with_exog_scaled = product_scaler.transform(test_product_sales_with_exog_scaled)
 
     # combine with original columns, ignoring old exog features
-
-    # train_daily_store_sales_with_exog_scaled[column_mapping.values()] = train_daily_store_sales_with_exog[column_mapping.values()]
-    # test_daily_store_sales_with_exog_scaled[column_mapping.values()] = test_daily_store_sales_with_exog[column_mapping.values()]
-    #
-    # train_product_sales_with_exog_scaled[column_mapping.values()] = train_product_sales_with_exog[column_mapping.values()]
-    # test_product_sales_with_exog_scaled[column_mapping.values()] = test_product_sales_with_exog[column_mapping.values()]
-    print("Columns from mapping:", list(column_mapping.values()))
-    print("Columns after scaling:", train_daily_store_sales_with_exog_scaled.columns.tolist())
+    # print("Columns from mapping:", list(column_mapping.values()))
+    # print("Columns after scaling:", train_daily_store_sales_with_exog_scaled.columns.tolist())
 
     for column in column_mapping.values():
         if column not in [column_mapping["price_column"], column_mapping["product_column"]]:

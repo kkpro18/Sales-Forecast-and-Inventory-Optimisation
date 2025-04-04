@@ -22,6 +22,7 @@ executor = ProcessPoolExecutor(max_workers=2) # do one less than the number of c
 class InputData(BaseModel):
     column_mapping: Optional[Dict[str, str]] = None
     data: Optional[List[Dict[str, Any]]] = None
+    exog_data: Optional[List[Dict[str, Any]]] = None
     train : Optional[List[Dict[str, Any]]] = None
     test : Optional[List[Dict[str, Any]]] = None
     daily_store_sales: Optional[List[Dict[str, Any]]] = None
@@ -36,7 +37,7 @@ class InputData(BaseModel):
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
     y_test: Optional[Dict[int, Any]] = None
-    seasonality: Optional[conint(gt=0)] = None
+    seasonality: Optional[conint(gt=-1)] = None
     test_forecast_steps: Optional[conint(gt=0)] = None
     model_name : Optional[str] = None
     model_path : Optional[str] = None
@@ -176,7 +177,7 @@ def store_arimax_model(received_data: InputData):
             raise ValueError("y_train or X_train is missing / empty")
         X_train = pd.DataFrame(received_data.X_train)
         y_train = pd.Series(received_data.y_train)
-
+        print("X_train columns: ", X_train.columns)
         arimax_model = fit_arimax_model(X_train, y_train)
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
@@ -197,10 +198,8 @@ def store_sarimax_model(received_data: InputData):
             raise ValueError("seasonality is missing.")
 
         seasonality = received_data.seasonality
-        y_train = pd.Series(received_data.y_train)
         X_train = pd.DataFrame(received_data.X_train)
-
-
+        y_train = pd.Series(received_data.y_train)
         sarimax_model = fit_sarimax_model(X_train, y_train, seasonality)
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
@@ -213,14 +212,15 @@ def store_sarimax_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"sarimax_model_path": sarimax_model_path}
-def store_fb_prophet_model(received_data: InputData):
+
+
+def store_fb_prophet_model_without_exog(received_data: InputData):
     try:
-        if not received_data.y_train or len(received_data.y_train) == 0:
+        if not received_data.data or len(received_data.data) == 0:
             raise ValueError("y_train is missing / empty")
-        if received_data.seasonality is None:
-            raise ValueError("seasonality is missing.")
 
         full_data = pd.DataFrame(received_data.data)
+
         prophet_model = fit_fb_prophet_model(full_data)
 
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
@@ -235,11 +235,11 @@ def store_fb_prophet_model(received_data: InputData):
         return {"fb_prophet_model_path": prophet_model_path}
 def store_fb_prophet_model_with_exog(received_data: InputData):
     try:
-        if not received_data.data or len(received_data.data) == 0:
+        if not received_data.exog_data or len(received_data.exog_data) == 0:
             raise ValueError("data is missing / empty")
 
-        full_data = pd.DataFrame(received_data.data)
-        prophet_model = fit_fb_prophet_model(full_data)
+        full_data = pd.DataFrame(received_data.exog_data)
+        prophet_model = fit_fb_prophet_model_with_exog(full_data)
 
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
@@ -269,11 +269,12 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
         arimax, sarimax = await asyncio.gather(fitted_arimax, fitted_sarimax)
         return {"arimax": arimax, "sarimax": sarimax}
 
-    elif received_data.model_one == "fb_prophet" and received_data.model_two == "fb_prophet_with_exog":
-        fitted_fb_prophet = loop.run_in_executor(executor, store_fb_prophet_model, received_data)
+    elif received_data.model_one == "fb_prophet_with_exog" and received_data.model_two == "fb_prophet_without_exog":
         fitted_fb_prophet_with_exog = loop.run_in_executor(executor, store_fb_prophet_model_with_exog, received_data)
-        fb_prophet, fb_prophet_with_exog = await asyncio.gather(fitted_fb_prophet, fitted_fb_prophet_with_exog)
-        return {"fb_prophet": fb_prophet, "fb_prophet_with_exog": fb_prophet_with_exog}
+        fitted_fb_prophet_without_exog = loop.run_in_executor(executor, store_fb_prophet_model_without_exog, received_data)
+
+        fb_prophet_with_exog, fb_prophet_without_exog = await asyncio.gather(fitted_fb_prophet_with_exog, fitted_fb_prophet_without_exog)
+        return {"fb_prophet_with_exog": fb_prophet_with_exog, "fitted_fb_prophet_without_exog": fb_prophet_without_exog}
 
 # Model Predictions
 @app.post("/predict_train_test_api")
@@ -283,31 +284,26 @@ def predict_train_test_api(received_data: InputData):
             raise ValueError("Model path is None")
         model_path = received_data.model_path
 
-        if received_data.model_name is None or received_data.model_name == "arima" or received_data.model_name == "sarima":
+        if received_data.model_name == "arima" or received_data.model_name == "sarima":
             test_forecast_steps = received_data.test_forecast_steps
-
-            if test_forecast_steps <= 0:
-                raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
 
             y_train_prediction = predict(model_path=model_path)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
-        elif received_data.model_name == "fb_prophet" or received_data.model_name == "fb_prophet_with_exog":
-            train_data = received_data.train_data
-            test_data = received_data.test_data
-
-            y_train_prediction = load_model(model_path).predict(train_data)
-            y_test_prediction = load_model(model_path).predict(test_data)
-        else:
+        elif received_data.model_name == "arimax" or received_data.model_name == "sarimax":
             test_forecast_steps = received_data.test_forecast_steps
-            if test_forecast_steps <= 0:
+            if test_forecast_steps <= 0: # if -1 it means exog
                 raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
             train_exog_features = pd.DataFrame(received_data.X_train).drop(columns=received_data.column_mapping.values(), errors="ignore")
             test_exog_features = pd.DataFrame(received_data.X_test).drop(columns=received_data.column_mapping.values(), errors="ignore")
-            # print(train_exog_features)
-            # print(test_exog_features)
 
             y_train_prediction = predict(model_path=model_path, exog=train_exog_features)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, exog=test_exog_features)
+        elif received_data.model_name == "fb_prophet_model_with_exog" or received_data.model_name == "fb_prophet_model_without_exog":
+            X_train_data = pd.DataFrame(received_data.X_train)
+            X_test_data = pd.DataFrame(received_data.X_test)
+
+            y_train_prediction = load_model(model_path).predict(X_train_data)
+            y_test_prediction = load_model(model_path).predict(X_test_data)
 
         if SessionManager.get_state("is_log_transformed"):
 
