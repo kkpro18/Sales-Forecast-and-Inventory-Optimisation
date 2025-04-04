@@ -17,6 +17,13 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/UK_Internet_Sales_Ratio.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/App/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv">
           <value>
             <Attribute>

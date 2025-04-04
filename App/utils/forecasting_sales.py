@@ -82,6 +82,7 @@ def fit_sarimax_model(X_train, y_train, seasonality):
 
 def fit_fb_prophet_model(full_data, column_mapping):
     data = full_data.rename(columns={column_mapping["date_column"]: 'ds', column_mapping["quantity_sold_column"]: 'y'}) # passing in expected format
+    data['ds'] = pd.to_datetime(data['ds'])
     prophet_model = Prophet()
 
     prophet_model.fit(data)
@@ -94,9 +95,10 @@ def fit_fb_prophet_model_with_exog(full_data, column_mapping):
             column_mapping["date_column"]: 'ds',
             column_mapping["quantity_sold_column"]: 'y'
         })
+    data['ds'] = pd.to_datetime(data['ds'])
     prophet_model = Prophet()
 
-    exog_features = full_data.columns.difference(column_mapping)
+    exog_features = full_data.columns.difference(column_mapping.values())
 
     for exog_feature in exog_features:
         prophet_model.add_regressor(exog_feature)
@@ -127,7 +129,6 @@ async def predict_sales_arima_sarima(train, test, column_mapping, product_name=N
     target = column_mapping["quantity_sold_column"]
 
     X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
-
     json_response = SessionManager.fast_api("fit_models_in_parallel_api", model_one="arima", model_two="sarima", y_train=y_train.to_dict(), seasonality=SessionManager.get_state('selected_seasonality'), product_name=product_name)
     if json_response.status_code == 200:
 
@@ -153,7 +154,8 @@ async def predict_sales_arima_sarima(train, test, column_mapping, product_name=N
 
         # Predict SARIMA
         json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-                                                model_path=sarima_model_path, model_name="sarima")
+                                                model_path=sarima_model_path, model_name="sarima",
+                                                is_log_transformed=SessionManager.get_state("is_log_transformed"))
 
         if json_response.status_code == 200:
             y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
@@ -200,11 +202,9 @@ async def predict_sales_arimax_sarimax(train, test, column_mapping, product_name
 
     plot_features = column_mapping["date_column"]
 
-
     target = column_mapping["quantity_sold_column"]
 
     X_train_exog, X_test_exog, X_train, X_test, y_train, y_test = train[exog_features], test[exog_features], train[plot_features], test[plot_features], train[target], test[target]
-
     # st.write("exog features are", exog_features)
     # st.write("plot features are", plot_features)
     # st.write("x test", len(X_test))
@@ -230,7 +230,8 @@ async def predict_sales_arimax_sarimax(train, test, column_mapping, product_name
                                                 model_name="arimax",
                                                 X_train=X_train_exog.to_dict(orient='records'),
                                                 X_test=X_test_exog.to_dict(orient='records'),
-                                                column_mapping=column_mapping)
+                                                column_mapping=column_mapping,
+                                                is_log_transformed=SessionManager.get_state("is_log_transformed")        )
         if json_response.status_code == 200:
             y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
             y_test_prediction_arimax = pd.Series(json_response.json()["y_test_prediction"])
@@ -285,12 +286,24 @@ async def predict_sales_arimax_sarimax(train, test, column_mapping, product_name
     else:
         st.error(json_response.text)
 
-async def predict_sales_fb_prophet_with_and_without_exog(train_with_exog, test_with_exog, column_mapping, product_name=None):
+async def predict_sales_fb_prophet(train_with_exog, test_with_exog, column_mapping, product_name=None):
     train_without_exog = train_with_exog[train_with_exog.columns.intersection(column_mapping.values())] # chooses only those columns
     test_without_exog = test_with_exog[test_with_exog.columns.intersection(column_mapping.values())]
-
     if product_name is not None:
         train_with_exog.drop(column_mapping["product_column"], axis=1, inplace=True)
+        test_with_exog.drop(column_mapping["product_column"], axis=1, inplace=True)
+
+    train_without_exog[column_mapping["date_column"]] = train_without_exog[column_mapping["date_column"]].astype(str)
+    test_without_exog[column_mapping["date_column"]] = test_without_exog[column_mapping["date_column"]].astype(str)
+
+    train_with_exog[column_mapping["date_column"]] = train_with_exog[column_mapping["date_column"]].astype(str)
+    test_with_exog[column_mapping["date_column"]] = test_with_exog[column_mapping["date_column"]].astype(str)
+
+    # print(f"\n\n\n\n\n\n{train_with_exog.columns}\n\n\n\n\n\n")
+    # print("train_with_exog", train_with_exog.columns)
+    # print("test_with_exog", test_with_exog.columns)
+    # print("Data", train_without_exog.columns)
+
     json_response = SessionManager.fast_api("fit_models_in_parallel_api",
                                             data=train_without_exog.to_dict(orient='records'),
                                             exog_data=train_with_exog.to_dict(orient='records'),
@@ -301,56 +314,59 @@ async def predict_sales_fb_prophet_with_and_without_exog(train_with_exog, test_w
 
     if json_response.status_code == 200:
         fb_prophet_with_exog_model_path = json_response.json()["fb_prophet_with_exog"]["fb_prophet_with_exog_model_path"]
-        fb_prophet_without_exog_model_path = json_response.json()["fb_prophet_without_exog"]["fb_prophet_without_exog_model_path"]
+        fb_prophet_without_exog_model_path = json_response.json()["fb_prophet_without_exog"]["fb_prophet_model_path"]
         # Predict fb_prophet with exog
-        X_train = train_with_exog.drop(column_mapping("quantity_sold_column"))
-        X_test = test_with_exog.drop(column_mapping("quantity_sold_column"))
-        y_train = train_with_exog[column_mapping("quantity_sold_column")]
-        y_test = test_with_exog[column_mapping("quantity_sold_column")]
 
+        y_train = train_with_exog[column_mapping["quantity_sold_column"]]
+        y_test = test_with_exog[column_mapping["quantity_sold_column"]]
+        X_train = train_with_exog.drop(column_mapping["quantity_sold_column"], axis=1)
+        X_test = test_with_exog.drop(column_mapping["quantity_sold_column"], axis=1)
+        print(X_train.to_dict(orient='records'))
         json_response = SessionManager.fast_api("predict_train_test_api",
                                                 model_path=fb_prophet_with_exog_model_path,
                                                 model_name="fb_prophet_with_exog",
                                                 X_train=X_train.to_dict(orient='records'),
                                                 X_test=X_test.to_dict(orient='records'),
-                                                column_mapping = column_mapping)
+                                                column_mapping = column_mapping,
+                                                is_log_transformed=SessionManager.get_state("is_log_transformed"))
 
         if json_response.status_code == 200:
             y_train_prediction_fb_prophet_with_exog = pd.Series(json_response.json()["y_train_prediction"])
             y_test_prediction_fb_prophet_with_exog = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### FB-Prophet Model With Exog Features:")
-            st.write(load_model(fb_prophet_with_exog_model_path).summary())
+            # st.write(load_model(fb_prophet_with_exog_model_path).summary())
             print_performance_metrics(y_train, y_train_prediction_fb_prophet_with_exog, y_test, y_test_prediction_fb_prophet_with_exog)
             plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_fb_prophet_with_exog, column_mapping)
         else:
             st.error(json_response.text)
 
-        # Predict fb_prophet without exog
-        X_train, X_test, y_train, y_test = train_without_exog[column_mapping["date_column"]], test_without_exog[
-            column_mapping["date_column"]], train_without_exog[
-            column_mapping["quantity_sold_column"]], test_without_exog[column_mapping["quantity_sold_column"]]
-
-
-        json_response = SessionManager.fast_api("predict_train_test_api",
-                                                model_path=fb_prophet_without_exog_model_path,
-                                                model_name="fb_prophet_model_without_exog",
-                                                data=train_without_exog.to_dict(orient='records'),
-                                                column_mapping=column_mapping)
-
-        if json_response.status_code == 200:
-            y_train_prediction_fb_prophet_without_exog = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction_fb_prophet_without_exog = pd.Series(json_response.json()["y_test_prediction"])
-
-            st.markdown("### FB-Prophet Model With Exog Features:")
-            st.write(joblib.load(fb_prophet_without_exog_model_path).summary())
-            print_performance_metrics(y_train,
-                                      y_train_prediction_fb_prophet_without_exog, y_test,
-                                      y_test_prediction_fb_prophet_without_exog)
-            plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_fb_prophet_without_exog,
-                            column_mapping)
-        else:
-            st.error(json_response.text)
+        # # Predict fb_prophet without exog
+        # X_train, X_test, y_train, y_test = train_without_exog[column_mapping["date_column"]], test_without_exog[
+        #     column_mapping["date_column"]], train_without_exog[
+        #     column_mapping["quantity_sold_column"]], test_without_exog[column_mapping["quantity_sold_column"]]
+        #
+        #
+        # json_response = SessionManager.fast_api("predict_train_test_api",
+        #                                         model_path=fb_prophet_without_exog_model_path,
+        #                                         model_name="fb_prophet_model_without_exog",
+        #                                         data=train_without_exog.to_dict(orient='records'),
+        #                                         column_mapping=column_mapping)
+        #
+        # if json_response.status_code == 200:
+        #     y_train_prediction_fb_prophet_without_exog = pd.Series(json_response.json()["y_train_prediction"])
+        #     y_test_prediction_fb_prophet_without_exog = pd.Series(json_response.json()["y_test_prediction"])
+        #
+        #     st.markdown("### FB-Prophet Model Without Exog Features:")
+        #     st.write(joblib.load(fb_prophet_without_exog_model_path).summary())
+        #     print_performance_metrics(y_train,
+        #                               y_train_prediction_fb_prophet_without_exog,
+        #                               y_test,
+        #                               y_test_prediction_fb_prophet_without_exog)
+        #     plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_fb_prophet_without_exog,
+        #                     column_mapping)
+        # else:
+        #     st.error(json_response.text)
 
 
     else:

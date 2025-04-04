@@ -12,7 +12,7 @@ from sktime.utils.mlflow_sktime import load_model
 from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, handle_missing_values
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, fit_fb_prophet_model, fit_fb_prophet_model_with_exog, predict
 from datetime import datetime
-from App.utils.session_manager import SessionManager
+from prophet.serialize import model_to_json, model_from_json
 
 "uvicorn App.utils.fast_api_app:app --port 8000 --reload"
 
@@ -37,13 +37,14 @@ class InputData(BaseModel):
     X_test: Optional[List[Dict[str, Any]]] = None
     y_train: Optional[Dict[int, Any]] = None
     y_test: Optional[Dict[int, Any]] = None
-    seasonality: Optional[conint(gt=-1)] = None
+    seasonality: Optional[conint(gt=0)] = None
     test_forecast_steps: Optional[conint(gt=0)] = None
     model_name : Optional[str] = None
     model_path : Optional[str] = None
     product_name: Optional[str] = None
     model_one : Optional[str] = None
     model_two : Optional[str] = None
+    is_log_transformed: Optional[bool] = None
 
 
 
@@ -177,7 +178,6 @@ def store_arimax_model(received_data: InputData):
             raise ValueError("y_train or X_train is missing / empty")
         X_train = pd.DataFrame(received_data.X_train)
         y_train = pd.Series(received_data.y_train)
-        print("X_train columns: ", X_train.columns)
         arimax_model = fit_arimax_model(X_train, y_train)
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
@@ -212,23 +212,22 @@ def store_sarimax_model(received_data: InputData):
         raise HTTPException(status_code=500, detail=str(e))
     finally:
         return {"sarimax_model_path": sarimax_model_path}
-
-
 def store_fb_prophet_model_without_exog(received_data: InputData):
     try:
         if not received_data.data or len(received_data.data) == 0:
-            raise ValueError("y_train is missing / empty")
+            raise ValueError("data is missing / empty")
 
         full_data = pd.DataFrame(received_data.data)
 
-        prophet_model = fit_fb_prophet_model(full_data)
+        prophet_model = fit_fb_prophet_model(full_data, received_data.column_mapping)
 
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
-            prophet_model_path = f'models/prophet{received_data.product_name}_{date_timestamp}.pkl'
+            prophet_model_path = f'models/prophet_{received_data.product_name}_{date_timestamp}.json'
         else:
-            prophet_model_path = f'models/prophet{date_timestamp}.pkl'
-        save_model(prophet_model, prophet_model_path)
+            prophet_model_path = f'models/prophet_{date_timestamp}.json'
+        with open(prophet_model_path, 'w') as fout:
+            fout.write(model_to_json(prophet_model))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -239,14 +238,15 @@ def store_fb_prophet_model_with_exog(received_data: InputData):
             raise ValueError("data is missing / empty")
 
         full_data = pd.DataFrame(received_data.exog_data)
-        prophet_model = fit_fb_prophet_model_with_exog(full_data)
+        prophet_model = fit_fb_prophet_model_with_exog(full_data, received_data.column_mapping)
 
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
-            prophet_model_path = f'models/prophet_with_exog_{received_data.product_name}_{date_timestamp}.pkl'
+            prophet_model_path = f'models/prophet_with_exog_{received_data.product_name}_{date_timestamp}.json'
         else:
-            prophet_model_path = f'models/prophet_with_exog_{date_timestamp}.pkl'
-        save_model(prophet_model, prophet_model_path)
+            prophet_model_path = f'models/prophet_with_exog_{date_timestamp}.json'
+        with open(prophet_model_path, 'w') as fout:
+            fout.write(model_to_json(prophet_model))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -274,11 +274,12 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
         fitted_fb_prophet_without_exog = loop.run_in_executor(executor, store_fb_prophet_model_without_exog, received_data)
 
         fb_prophet_with_exog, fb_prophet_without_exog = await asyncio.gather(fitted_fb_prophet_with_exog, fitted_fb_prophet_without_exog)
-        return {"fb_prophet_with_exog": fb_prophet_with_exog, "fitted_fb_prophet_without_exog": fb_prophet_without_exog}
+        return {"fb_prophet_with_exog": fb_prophet_with_exog, "fb_prophet_without_exog": fb_prophet_without_exog}
 
 # Model Predictions
 @app.post("/predict_train_test_api")
 def predict_train_test_api(received_data: InputData):
+    column_mapping = received_data.column_mapping
     try:
         if received_data.model_path is None:
             raise ValueError("Model path is None")
@@ -293,23 +294,26 @@ def predict_train_test_api(received_data: InputData):
             test_forecast_steps = received_data.test_forecast_steps
             if test_forecast_steps <= 0: # if -1 it means exog
                 raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
-            train_exog_features = pd.DataFrame(received_data.X_train).drop(columns=received_data.column_mapping.values(), errors="ignore")
-            test_exog_features = pd.DataFrame(received_data.X_test).drop(columns=received_data.column_mapping.values(), errors="ignore")
+            train_exog_features = pd.DataFrame(received_data.X_train).drop(columns=column_mapping.values(), errors="ignore")
+            test_exog_features = pd.DataFrame(received_data.X_test).drop(columns=column_mapping.values(), errors="ignore")
 
             y_train_prediction = predict(model_path=model_path, exog=train_exog_features)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, exog=test_exog_features)
         elif received_data.model_name == "fb_prophet_model_with_exog" or received_data.model_name == "fb_prophet_model_without_exog":
-            X_train_data = pd.DataFrame(received_data.X_train)
-            X_test_data = pd.DataFrame(received_data.X_test)
 
-            y_train_prediction = load_model(model_path).predict(X_train_data)
-            y_test_prediction = load_model(model_path).predict(X_test_data)
+            X_train_data = pd.DataFrame(received_data.X_train).rename(columns={column_mapping["date_column"]: 'ds'})  # passing in expected format
+            X_test_data = pd.DataFrame(received_data.X_test).rename(columns={column_mapping["date_column"]: 'ds'})
 
-        if SessionManager.get_state("is_log_transformed"):
+            with open(model_path, 'r') as fin:
+                prophet_model = model_from_json(fin.read())
 
+
+            y_train_prediction = prophet_model.predict(X_train_data)
+            y_test_prediction = prophet_model.predict(X_test_data)
+
+        if received_data.is_log_transformed is True:
             y_train_prediction = np.round(np.expm1(y_train_prediction))
             y_test_prediction = np.round(np.expm1(y_test_prediction))
-
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")
