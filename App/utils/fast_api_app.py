@@ -1,16 +1,19 @@
 import asyncio
 from concurrent.futures import ProcessPoolExecutor
+from datetime import datetime
 from typing import Optional, Dict, List, Any
+
 import joblib
 import numpy as np
 import pandas as pd
-from fastapi import FastAPI, HTTPException
 import uvicorn
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel, conint
-from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, handle_missing_values
-from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, fit_fb_prophet_model, fit_fb_prophet_model_with_exog, predict
-from datetime import datetime
-from prophet.serialize import model_to_json, model_from_json
+
+from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, \
+    fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, handle_missing_values
+from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, \
+    fit_fb_prophet_model, fit_fb_prophet_model_with_exog, predict
 
 "uvicorn App.utils.fast_api_app:app --port 8000 --reload"
 
@@ -20,9 +23,10 @@ executor = ProcessPoolExecutor(max_workers=2) # do one less than the number of c
 class InputData(BaseModel):
     column_mapping: Optional[Dict[str, str]] = None
     data: Optional[List[Dict[str, Any]]] = None
-    exog_data: Optional[List[Dict[str, Any]]] = None
     train : Optional[List[Dict[str, Any]]] = None
     test : Optional[List[Dict[str, Any]]] = None
+    train_with_exog : Optional[List[Dict[str, Any]]] = None
+    test_with_exog : Optional[List[Dict[str, Any]]] = None
     daily_store_sales: Optional[List[Dict[str, Any]]] = None
     daily_product_sales: Optional[List[Dict[str, Any]]] = None
     train_daily_store_sales: Optional[List[Dict[str, Any]]] = None
@@ -210,18 +214,18 @@ def store_sarimax_model(received_data: InputData):
         return {"sarimax_model_path": sarimax_model_path}
 def store_fb_prophet_model_without_exog(received_data: InputData):
     try:
-        if not received_data.data or len(received_data.data) == 0:
+        if not received_data.train or len(received_data.train) == 0:
             raise ValueError("data is missing / empty")
 
-        full_data = pd.DataFrame(received_data.data)
+        train = pd.DataFrame(received_data.train)
 
-        prophet_model = fit_fb_prophet_model(full_data, received_data.column_mapping)
+        prophet_model = fit_fb_prophet_model(train, received_data.column_mapping)
 
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
-            prophet_model_path = f'models/prophet_{received_data.product_name}_{date_timestamp}.json'
+            prophet_model_path = f'models/prophet_{received_data.product_name}_{date_timestamp}.pkl'
         else:
-            prophet_model_path = f'models/prophet_{date_timestamp}.json'
+            prophet_model_path = f'models/prophet_{date_timestamp}.pkl'
         joblib.dump(prophet_model, prophet_model_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
@@ -229,19 +233,18 @@ def store_fb_prophet_model_without_exog(received_data: InputData):
         return {"fb_prophet_model_path": prophet_model_path}
 def store_fb_prophet_model_with_exog(received_data: InputData):
     try:
-        if not received_data.exog_data or len(received_data.exog_data) == 0:
-            raise ValueError("data is missing / empty")
+        if not received_data.train_with_exog or len(received_data.train_with_exog) == 0:
+            raise ValueError("train_with_exog is missing / empty")
 
-        full_data = pd.DataFrame(received_data.exog_data)
-        prophet_model = fit_fb_prophet_model_with_exog(full_data, received_data.column_mapping)
+        train_with_exog = pd.DataFrame(received_data.train_with_exog)
+        prophet_model = fit_fb_prophet_model_with_exog(train_with_exog, received_data.column_mapping)
 
         date_timestamp = datetime.now().strftime("%Y_%m_%d_%H_%M_%S")
         if received_data.product_name is not None:
-            prophet_model_path = f'models/prophet_with_exog_{received_data.product_name}_{date_timestamp}.json'
+            prophet_model_path = f'models/prophet_with_exog_{received_data.product_name}_{date_timestamp}.pkl'
         else:
-            prophet_model_path = f'models/prophet_with_exog_{date_timestamp}.json'
-        with open(prophet_model_path, 'w') as fout:
-            fout.write(model_to_json(prophet_model))
+            prophet_model_path = f'models/prophet_with_exog_{date_timestamp}.pkl'
+        joblib.dump(prophet_model, prophet_model_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -264,11 +267,12 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
         arimax, sarimax = await asyncio.gather(fitted_arimax, fitted_sarimax)
         return {"arimax": arimax, "sarimax": sarimax}
 
-    elif received_data.model_one == "fb_prophet_with_exog" and received_data.model_two == "fb_prophet_without_exog":
-        fitted_fb_prophet_with_exog = loop.run_in_executor(executor, store_fb_prophet_model_with_exog, received_data)
+    elif received_data.model_one == "fb_prophet_without_exog" and received_data.model_two == "fb_prophet_with_exog":
         fitted_fb_prophet_without_exog = loop.run_in_executor(executor, store_fb_prophet_model_without_exog, received_data)
-        fb_prophet_with_exog, fb_prophet_without_exog = await asyncio.gather(fitted_fb_prophet_with_exog, fitted_fb_prophet_without_exog)
-        return {"fb_prophet_with_exog": fb_prophet_with_exog, "fb_prophet_without_exog": fb_prophet_without_exog}
+        fitted_fb_prophet_with_exog = loop.run_in_executor(executor, store_fb_prophet_model_with_exog, received_data)
+
+        fb_prophet_without_exog, fb_prophet_with_exog = await asyncio.gather(fitted_fb_prophet_without_exog, fitted_fb_prophet_with_exog)
+        return {"fb_prophet_without_exog": fb_prophet_without_exog, "fb_prophet_with_exog": fb_prophet_with_exog }
 
 # Model Predictions
 @app.post("/predict_train_test_api")
@@ -293,31 +297,29 @@ def predict_train_test_api(received_data: InputData):
 
             y_train_prediction = predict(model_path=model_path, data=train_exog_features)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, data=test_exog_features)
-        elif received_data.model_name == "fb_prophet_model_with_exog":
-            print(received_data)
-            X_train = pd.DataFrame(received_data.X_train).rename(columns={column_mapping["date_column"]: 'ds'})
-            X_test = pd.DataFrame(received_data.X_test).rename(columns={column_mapping["date_column"]: 'ds'})
+        elif received_data.model_name == "fb_prophet_with_exog" or received_data.model_name == "fb_prophet_without_exog":
+            if received_data.train is None or len(received_data.train) == 0:
+                raise ValueError("Train data is None")
+            if received_data.test is None or len(received_data.test) == 0:
+                raise ValueError("Test data is None")
 
-            X_train["ds"] = pd.to_datetime(X_train["ds"], errors="coerce")
-            X_test["ds"] = pd.to_datetime(X_test["ds"], errors="coerce")
+            train = pd.DataFrame(received_data.train).rename(columns={column_mapping["date_column"]: 'ds', column_mapping["quantity_sold_column"]: 'y'})
+            test = pd.DataFrame(received_data.test).rename(columns={column_mapping["date_column"]: 'ds', column_mapping["quantity_sold_column"]: 'y'})
 
-            y_train_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_train)
-            y_test_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_test)
+            train["ds"] = pd.to_datetime(train["ds"], errors="coerce")
+            test["ds"] = pd.to_datetime(test["ds"], errors="coerce")
 
+            y_train_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=train)
+            y_test_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=test)
 
-        elif received_data.model_name == "fb_prophet_model_without_exog":
-            X_train = pd.DataFrame(received_data.X_train)[column_mapping["date_column"]].rename(columns={column_mapping["date_column"]: 'ds'})
-            X_test = pd.DataFrame(received_data.X_test)[column_mapping["date_column"]].rename(columns={column_mapping["date_column"]: 'ds'})
+            if y_train_prediction is None or len(y_train_prediction) == 0:
+                raise ValueError("Y Train is Empty")
+            if y_test_prediction is None or len(y_test_prediction) == 0:
+                raise ValueError("Y Test is Empty")
 
-            X_train["ds"] = pd.to_datetime(X_train["ds"], errors="coerce")
-            X_test["ds"] = pd.to_datetime(X_test["ds"], errors="coerce")
-
-            y_train_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_train)
-            y_test_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_test)
-
-        if received_data.is_log_transformed is True:
-            y_train_prediction = np.round(np.expm1(y_train_prediction))
-            y_test_prediction = np.round(np.expm1(y_test_prediction))
+        # if received_data.is_log_transformed is True:
+        #     y_train_prediction = np.round(np.expm1(y_train_prediction))
+        #     y_test_prediction = np.round(np.expm1(y_test_prediction))
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")

@@ -17,7 +17,28 @@
             </Attribute>
           </value>
         </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/UK_CPIH_250125.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
         <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/UK_Internet_Sales_Ratio.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/UK_RPI_250125.csv">
+          <value>
+            <Attribute>
+              <option name="separator" value="," />
+            </Attribute>
+          </value>
+        </entry>
+        <entry key="/App/AppMaintenance/raw_macro_economical_data/UK/UK_Unemployment_Rate.csv">
           <value>
             <Attribute>
               <option name="separator" value="," />

@@ -2,8 +2,7 @@ import asyncio
 
 import streamlit as st
 import os
-from App.utils.forecasting_sales import get_seasonality, predict_sales_arima_sarima, predict_sales_arimax_sarimax, \
-    predict_sales_fb_prophet, predict_sales_fb_prophet_with_exog
+from App.utils.forecasting_sales import get_seasonality, predict_sales_fb_prophet, predict_sales_arima_sarima, predict_sales_arimax_sarimax
 from App.utils.session_manager import SessionManager
 
 st.set_page_config(
@@ -44,40 +43,25 @@ else:
         if not os.path.isdir("models"):
             os.mkdir("models")
 
-        # asyncio.run(
-        #     predict_sales_arima_sarima(
-        #         train_daily_store_sales,
-        #         test_daily_store_sales,
-        #         column_mapping,
-        #     )
-        # )
-        # asyncio.run(
-        #     predict_sales_arimax_sarimax(
-        #         train_daily_store_sales_with_exog,
-        #         test_daily_store_sales_with_exog,
-        #         column_mapping,
-        #     )
-        # )
+        asyncio.run(
+            predict_sales_arima_sarima(
+                train_daily_store_sales,
+                test_daily_store_sales,
+                column_mapping,
+            )
+        )
+        asyncio.run(
+            predict_sales_arimax_sarimax(
+                train_daily_store_sales_with_exog,
+                test_daily_store_sales_with_exog,
+                column_mapping,
+            )
+        )
         asyncio.run(
             predict_sales_fb_prophet(
-                train_daily_store_sales, test_daily_store_sales,
-                column_mapping,
-                is_log_transformed=SessionManager.get_state("is_log_transformed"),
+                train_daily_store_sales, test_daily_store_sales, train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, column_mapping,
             )
         )
-        asyncio.run(
-            predict_sales_fb_prophet_with_exog(
-                train_daily_store_sales_with_exog, test_daily_store_sales_with_exog,
-                column_mapping,
-                is_log_transformed=SessionManager.get_state("is_log_transformed"),
-            )
-        )
-        # asyncio.run(
-        #     predict_sales_fb_prophet(
-        #         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog,
-        #         column_mapping,
-        #     )
-        # )
 
 
 
