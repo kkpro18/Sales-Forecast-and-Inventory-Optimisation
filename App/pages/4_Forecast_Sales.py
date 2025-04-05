@@ -3,7 +3,7 @@ import asyncio
 import streamlit as st
 import os
 from App.utils.forecasting_sales import get_seasonality, predict_sales_arima_sarima, predict_sales_arimax_sarimax, \
-    predict_sales_fb_prophet
+    predict_sales_fb_prophet, predict_sales_fb_prophet_with_exog
 from App.utils.session_manager import SessionManager
 
 st.set_page_config(
@@ -21,13 +21,21 @@ if not SessionManager.is_there("data") or not SessionManager.is_there("column_ma
 elif not SessionManager.get_state("preprocess_data_complete"):
     st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
 else:
+    column_mapping = SessionManager.get_state("column_mapping")
+    date_column = column_mapping["date_column"]
+
     train_daily_store_sales = SessionManager.get_state("train_daily_store_sales")
+    train_daily_store_sales[date_column] = train_daily_store_sales[date_column].astype(str)
+
     test_daily_store_sales = SessionManager.get_state("test_daily_store_sales")
+    test_daily_store_sales[date_column] = test_daily_store_sales[date_column].astype(str)
 
     train_daily_store_sales_with_exog = SessionManager.get_state("train_daily_store_sales_with_exog")
-    test_daily_store_sales_with_exog = SessionManager.get_state("test_daily_store_sales_with_exog")
+    train_daily_store_sales_with_exog[date_column] = train_daily_store_sales_with_exog[date_column].astype(str)
 
-    column_mapping = SessionManager.get_state("column_mapping")
+    test_daily_store_sales_with_exog = SessionManager.get_state("test_daily_store_sales_with_exog")
+    test_daily_store_sales_with_exog[date_column] = test_daily_store_sales_with_exog[date_column].astype(str)
+
     get_seasonality()
     st.write(SessionManager.get_state("is_log_transformed"))
     if SessionManager.is_there("selected_seasonality"):
@@ -52,10 +60,26 @@ else:
         # )
         asyncio.run(
             predict_sales_fb_prophet(
-                train_daily_store_sales_with_exog, test_daily_store_sales_with_exog,
+                train_daily_store_sales, test_daily_store_sales,
                 column_mapping,
+                is_log_transformed=SessionManager.get_state("is_log_transformed"),
             )
         )
+        asyncio.run(
+            predict_sales_fb_prophet_with_exog(
+                train_daily_store_sales_with_exog, test_daily_store_sales_with_exog,
+                column_mapping,
+                is_log_transformed=SessionManager.get_state("is_log_transformed"),
+            )
+        )
+        # asyncio.run(
+        #     predict_sales_fb_prophet(
+        #         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog,
+        #         column_mapping,
+        #     )
+        # )
+
+
 
         # st.markdown("### Individual Product Sales Forecasting")
         #

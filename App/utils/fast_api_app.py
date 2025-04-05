@@ -7,8 +7,6 @@ import pandas as pd
 from fastapi import FastAPI, HTTPException
 import uvicorn
 from pydantic import BaseModel, conint
-from sktime.utils.mlflow_sktime import load_model
-
 from App.utils.data_preprocessing import convert_to_dict, transform_data, handle_outliers, fix_dates_and_split_into_product_sales_and_daily_sales, split_training_testing_data, handle_missing_values
 from App.utils.forecasting_sales import fit_arima_model, fit_sarima_model, fit_arimax_model, fit_sarimax_model, fit_fb_prophet_model, fit_fb_prophet_model_with_exog, predict
 from datetime import datetime
@@ -45,8 +43,6 @@ class InputData(BaseModel):
     model_one : Optional[str] = None
     model_two : Optional[str] = None
     is_log_transformed: Optional[bool] = None
-
-
 
 ## Pre Processing
 
@@ -226,8 +222,7 @@ def store_fb_prophet_model_without_exog(received_data: InputData):
             prophet_model_path = f'models/prophet_{received_data.product_name}_{date_timestamp}.json'
         else:
             prophet_model_path = f'models/prophet_{date_timestamp}.json'
-        with open(prophet_model_path, 'w') as fout:
-            fout.write(model_to_json(prophet_model))
+        joblib.dump(prophet_model, prophet_model_path)
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
     finally:
@@ -272,7 +267,6 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
     elif received_data.model_one == "fb_prophet_with_exog" and received_data.model_two == "fb_prophet_without_exog":
         fitted_fb_prophet_with_exog = loop.run_in_executor(executor, store_fb_prophet_model_with_exog, received_data)
         fitted_fb_prophet_without_exog = loop.run_in_executor(executor, store_fb_prophet_model_without_exog, received_data)
-
         fb_prophet_with_exog, fb_prophet_without_exog = await asyncio.gather(fitted_fb_prophet_with_exog, fitted_fb_prophet_without_exog)
         return {"fb_prophet_with_exog": fb_prophet_with_exog, "fb_prophet_without_exog": fb_prophet_without_exog}
 
@@ -297,19 +291,29 @@ def predict_train_test_api(received_data: InputData):
             train_exog_features = pd.DataFrame(received_data.X_train).drop(columns=column_mapping.values(), errors="ignore")
             test_exog_features = pd.DataFrame(received_data.X_test).drop(columns=column_mapping.values(), errors="ignore")
 
-            y_train_prediction = predict(model_path=model_path, exog=train_exog_features)
-            y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, exog=test_exog_features)
-        elif received_data.model_name == "fb_prophet_model_with_exog" or received_data.model_name == "fb_prophet_model_without_exog":
+            y_train_prediction = predict(model_path=model_path, data=train_exog_features)
+            y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, data=test_exog_features)
+        elif received_data.model_name == "fb_prophet_model_with_exog":
+            print(received_data)
+            X_train = pd.DataFrame(received_data.X_train).rename(columns={column_mapping["date_column"]: 'ds'})
+            X_test = pd.DataFrame(received_data.X_test).rename(columns={column_mapping["date_column"]: 'ds'})
 
-            X_train_data = pd.DataFrame(received_data.X_train).rename(columns={column_mapping["date_column"]: 'ds'})  # passing in expected format
-            X_test_data = pd.DataFrame(received_data.X_test).rename(columns={column_mapping["date_column"]: 'ds'})
+            X_train["ds"] = pd.to_datetime(X_train["ds"], errors="coerce")
+            X_test["ds"] = pd.to_datetime(X_test["ds"], errors="coerce")
 
-            with open(model_path, 'r') as fin:
-                prophet_model = model_from_json(fin.read())
+            y_train_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_train)
+            y_test_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_test)
 
 
-            y_train_prediction = prophet_model.predict(X_train_data)
-            y_test_prediction = prophet_model.predict(X_test_data)
+        elif received_data.model_name == "fb_prophet_model_without_exog":
+            X_train = pd.DataFrame(received_data.X_train)[column_mapping["date_column"]].rename(columns={column_mapping["date_column"]: 'ds'})
+            X_test = pd.DataFrame(received_data.X_test)[column_mapping["date_column"]].rename(columns={column_mapping["date_column"]: 'ds'})
+
+            X_train["ds"] = pd.to_datetime(X_train["ds"], errors="coerce")
+            X_test["ds"] = pd.to_datetime(X_test["ds"], errors="coerce")
+
+            y_train_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_train)
+            y_test_prediction = predict(model_path=model_path, model_name=received_data.model_name, data=X_test)
 
         if received_data.is_log_transformed is True:
             y_train_prediction = np.round(np.expm1(y_train_prediction))
@@ -322,8 +326,7 @@ def predict_train_test_api(received_data: InputData):
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
-    finally:
-        return {"y_train_prediction": y_train_prediction, "y_test_prediction": y_test_prediction}
+    return {"y_train_prediction": y_train_prediction, "y_test_prediction": y_test_prediction}
 
 
 if __name__ == "__main__":
