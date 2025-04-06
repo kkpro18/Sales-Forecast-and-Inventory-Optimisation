@@ -1,6 +1,3 @@
-import time
-
-import numpy as np
 import streamlit as st
 from App.utils.session_manager import SessionManager
 from App.utils.data_handling import read_uploaded_data, map_variables

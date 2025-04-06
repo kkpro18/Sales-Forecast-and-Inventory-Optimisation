@@ -1,18 +1,13 @@
-from datetime import datetime
-
 import joblib
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
 import pmdarima as pm
-import prophet
 from prophet import Prophet
 import streamlit as st
-from sklearn.metrics import root_mean_squared_error, r2_score, mean_absolute_percentage_error
-from sktime.performance_metrics.forecasting import mean_absolute_scaled_error, mean_absolute_error
+from sklearn.metrics import root_mean_squared_error, mean_absolute_percentage_error
+from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
 import uuid
-
-from sktime.utils.mlflow_sktime import load_model
 
 from App.utils.session_manager import SessionManager
 

@@ -1,6 +1,7 @@
 import streamlit as st
 import atexit
-from App.utils.session_manager import SessionManager
+import os
+from utils.session_manager import SessionManager
 
 # run app by "python -m streamlit run App/0_Home.py"
 

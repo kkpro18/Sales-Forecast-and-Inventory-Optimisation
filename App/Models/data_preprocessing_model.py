@@ -1,9 +1,6 @@
-from time import process_time
-
 import numpy as np
 import streamlit as st
 import pandas as pd
-from category_encoders import TargetEncoder
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler

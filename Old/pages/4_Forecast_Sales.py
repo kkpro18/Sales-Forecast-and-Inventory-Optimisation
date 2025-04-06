@@ -1,6 +1,5 @@
 import asyncio
 
-import pandas as pd
 import streamlit as st
 import os
 from App.utils.forecasting_sales import get_seasonality, predict_sales_arima_sarima, predict_sales_arimax_sarimax, predict_sales_fb_prophet
