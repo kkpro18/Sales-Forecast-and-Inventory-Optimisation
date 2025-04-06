@@ -194,7 +194,6 @@ def store_arimax_model(received_data: InputData):
     finally:
         return {"arimax_model_path": arimax_model_path}
 def store_sarimax_model(received_data: InputData):
-    # print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n{received_data.y_train}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
 
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
@@ -283,8 +282,6 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
 # Model Predictions
 @app.post("/predict_train_test_api")
 def predict_train_test_api(received_data: InputData):
-    print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nXTRAINEXOGSHAPE{received_data.X_train}XTESTEXOGSHAPE{received_data.X_test}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-
     column_mapping = received_data.column_mapping
     try:
         if received_data.model_path is None:
