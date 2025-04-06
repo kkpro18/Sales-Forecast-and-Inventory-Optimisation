@@ -11,12 +11,11 @@ st.markdown("# Visualise Your Sales Data")
 st.write(
     """Here you can see the data visually!""")
 
-
-if not SessionManager.is_there("train_daily_store_sales") or not SessionManager.is_there("train_daily_product_sales") or not SessionManager.is_there("column_mapping"):
-    st.warning("Missing Your Dataset, 👈 Please Upload Dataset ")
+if not SessionManager.is_there("data") or not SessionManager.is_there("column_mapping"):
+    st.warning("Missing Your Dataset, 👈 Please Upload Dataset and then Preprocess")
     st.page_link("pages/1_Upload_Data.py", label="👈 Upload The Dataset", icon="📁")
 elif not SessionManager.get_state("preprocess_data_complete"):
-    st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process The Dataset", icon="📁")
+    st.page_link("pages/2_Preprocess_Data.py", label="👈 Pre-process your data", icon="📁")
 else:
     store_data = SessionManager.get_state("train_daily_store_sales")
     product_data = SessionManager.get_state("train_daily_product_sales")
@@ -27,8 +26,6 @@ else:
 
     st.header("View Each Product Sales: ")
     visualise_individual_product_sales(product_data, column_mapping)
-
-
 
     st.page_link("pages/4_Forecast_Sales.py", label="👈 Next Stage: Forecast Sales", icon="📈")
 

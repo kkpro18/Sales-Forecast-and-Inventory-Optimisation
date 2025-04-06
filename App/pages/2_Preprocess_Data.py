@@ -31,15 +31,13 @@ else:
                                             data=data_as_dictionary,
                                             column_mapping=column_mapping)
     if json_response.status_code == 200:
-        st.success(f"Successfully Transformed Data No. Rows: {len(json_response.json())}")
-        SessionManager.set_state("is_log_transformed", True)
+        st.success(f"Successfully Transformed Data No. Rows: {len(json_response.json()['data'])}")
+        SessionManager.set_state("is_log_transformed", json_response.json()['is_log_transformed'])
     else:
         st.error(json_response.text)
 
     st.write("Handling Outliers")
-    json_response = SessionManager.fast_api("handle_outliers_api",
-                                            data = json_response.json(),
-                                            column_mapping = column_mapping)
+    json_response = SessionManager.fast_api("handle_outliers_api", data = json_response.json()['data'], column_mapping = column_mapping)
     if json_response.status_code == 200:
         st.success(f"Successfully Handled Outliers No. Rows: {len(json_response.json())}")
     else:
@@ -53,7 +51,6 @@ else:
         st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(json_response.json()['daily_store_sales'])}, Product Sales Size: {len(json_response.json()['daily_product_sales'])}")
     else:
         st.error(json_response.text)
-    # st.write(pd.DataFrame(json_response.json()['daily_product_sales']))
 
     st.write("Splitting into Train, Test")
     json_response = SessionManager.fast_api("train_test_split_api",
@@ -89,6 +86,7 @@ else:
         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
     st.success(f"Successfully concatenating Exogenous Features")
 
+
     st.write("Scaling Exogenous Variables")
     selected_region = SessionManager.get_state("region")
     if SessionManager.get_state("region") != "N/A":
@@ -98,11 +96,6 @@ else:
     st.write("Adding Lag Features")
     train_daily_store_sales_with_exog_lagged, test_daily_store_sales_with_exog_lagged, train_daily_product_sales_with_exog_lagged, test_daily_product_sales_with_exog_lagged = add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled, column_mapping)
     st.success(f"Successfully scaled Exogenous Features")
-
-    st.write(pd.DataFrame(train_daily_product_sales_with_exog_lagged))
-
-    # st.dataframe(train_daily_product_sales_with_exog_scaled)
-
 
     SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)
     SessionManager.set_state("test_daily_store_sales", test_daily_store_sales)
@@ -135,6 +128,6 @@ else:
     st.balloons()
 
 
-    # time.sleep(3)
-    # st.switch_page("pages/3_Visualise_Data.py")
+    st.page_link("pages/3_Visualise_Data.py", label="👈 Next Visualise the Data", icon="🧼")
+
 

@@ -14,9 +14,9 @@ from App.utils.data_handling import read_file
 
 def convert_to_dict(data):
     # converts to dicts while fixes any issues that causes json errors e.g NaN, Infinity, -Infinity, trailing 0s.
-    data.replace(pd.NaT, None, inplace=True)
-    data.replace([np.nan], None, inplace=True)
-    data.replace([np.inf, -np.inf], None, inplace=True)
+    data = data.replace(pd.NaT, None)
+    data = data.replace([np.nan], None)
+    data = data.replace([np.inf, -np.inf], None)
     # needs to handle symbols maybe
 
     return data.to_dict(orient='records')
@@ -27,9 +27,11 @@ def transform_data(data, column_mapping):
     if data[sales_column].skew() > 1:
         data[sales_column] = np.log1p(data[sales_column])
         st.success("Sales Column has been transformed using log transformation as it is skewed")
+        is_log_transformed=True
     else:
         st.success("Sales Column is not skewed, no transformation applied")
-    return data
+        is_log_transformed = False
+    return data, is_log_transformed
 
 
 def handle_outliers(data, column_mapping):
@@ -88,7 +90,7 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
 
     data[date_column] = data[date_column].dt.tz_localize(None)
 
-    data.dropna(subset=[date_column], inplace=True)
+    data = data.dropna(subset=[date_column])
 
     """
     Overall Sales Totalled Daily
@@ -102,8 +104,8 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
     daily_store_sales = pd.merge(daily_dates_df, daily_store_sales, on=column_mapping["date_column"], how='left', indicator=True)
     # fills in missing columns from new added dates
     daily_store_sales.loc[daily_store_sales["_merge"] == "left_only", column_mapping["quantity_sold_column"]] = 0
-    daily_store_sales.drop(columns=["_merge"], inplace=True)
-    daily_store_sales.reset_index(drop=True, inplace=True)
+    daily_store_sales = daily_store_sales.drop(columns=["_merge"])
+    daily_store_sales = daily_store_sales.reset_index(drop=True)
 
     """"
     Product Specific Data 
@@ -122,7 +124,7 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
         group.loc[group["_merge"] == 'left_only', column_mapping["price_column"]] = average_product_price
         group.loc[group["_merge"] == 'left_only', column_mapping["product_column"]] = most_frequent_product
         group.loc[group["_merge"] == 'left_only', column_mapping["quantity_sold_column"]] = 0
-        group.drop(columns=["_merge"], inplace=True)
+        group = group.drop(columns=["_merge"])
 
         return group
 
@@ -134,7 +136,7 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
         })
     daily_product_sales = daily_product_sales.groupby(column_mapping["product_column"]).apply(
         lambda group: fill_missing_date_range_per_group(group, column_mapping))
-    daily_product_sales.reset_index(drop=True, inplace=True)
+    daily_product_sales = daily_product_sales.reset_index(drop=True)
 
 
     return daily_store_sales, daily_product_sales
@@ -146,7 +148,7 @@ def split_training_testing_data(data, column_mapping):
     data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
     data[date_column] = data[date_column].dt.tz_localize(None)
 
-    data.sort_values(by=date_column, ascending=True, inplace=True)
+    data = data.sort_values(by=date_column, ascending=True)
     data.reset_index(drop=True, inplace=True)
     train_size = int(len(data) * 0.80)
     end_train_date = data.iloc[train_size][date_column]

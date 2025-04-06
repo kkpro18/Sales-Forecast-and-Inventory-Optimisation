@@ -55,7 +55,8 @@ def transform_data_api(received_data: InputData):
     try:
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
-        return convert_to_dict(transform_data(data, column_mapping))
+        data, is_log_transformed = transform_data(data, column_mapping)
+        return {"data": convert_to_dict(data), "is_log_transformed": is_log_transformed}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 @app.post("/handle_outliers_api")
@@ -173,6 +174,8 @@ def store_sarima_model(received_data: InputData):
     finally:
         return {"sarima_model_path": sarima_model_path}
 def store_arimax_model(received_data: InputData):
+    # print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n{received_data.y_train}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+
     try:
         if not received_data.y_train or len(received_data.y_train) == 0 or not received_data.X_train or len(received_data.X_train) == 0:
             raise ValueError("y_train or X_train is missing / empty")
@@ -191,6 +194,8 @@ def store_arimax_model(received_data: InputData):
     finally:
         return {"arimax_model_path": arimax_model_path}
 def store_sarimax_model(received_data: InputData):
+    # print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n{received_data.y_train}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+
     try:
         if not received_data.y_train or len(received_data.y_train) == 0:
             raise ValueError("y_train is missing / empty")
@@ -274,29 +279,33 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
         fb_prophet_without_exog, fb_prophet_with_exog = await asyncio.gather(fitted_fb_prophet_without_exog, fitted_fb_prophet_with_exog)
         return {"fb_prophet_without_exog": fb_prophet_without_exog, "fb_prophet_with_exog": fb_prophet_with_exog }
 
+
 # Model Predictions
 @app.post("/predict_train_test_api")
 def predict_train_test_api(received_data: InputData):
+    print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nXTRAINEXOGSHAPE{received_data.X_train}XTESTEXOGSHAPE{received_data.X_test}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
+
     column_mapping = received_data.column_mapping
     try:
         if received_data.model_path is None:
             raise ValueError("Model path is None")
         model_path = received_data.model_path
-
         if received_data.model_name == "arima" or received_data.model_name == "sarima":
             test_forecast_steps = received_data.test_forecast_steps
 
             y_train_prediction = predict(model_path=model_path)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
         elif received_data.model_name == "arimax" or received_data.model_name == "sarimax":
+
             test_forecast_steps = received_data.test_forecast_steps
             if test_forecast_steps <= 0: # if -1 it means exog
                 raise ValueError(f"Invalid forecast periods: {test_forecast_steps}")
+            column_mapping.pop("price_column") # price is used as a exog feature
             train_exog_features = pd.DataFrame(received_data.X_train).drop(columns=column_mapping.values(), errors="ignore")
             test_exog_features = pd.DataFrame(received_data.X_test).drop(columns=column_mapping.values(), errors="ignore")
-
             y_train_prediction = predict(model_path=model_path, data=train_exog_features)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps, data=test_exog_features)
+
         elif received_data.model_name == "fb_prophet_with_exog" or received_data.model_name == "fb_prophet_without_exog":
             if received_data.train is None or len(received_data.train) == 0:
                 raise ValueError("Train data is None")
@@ -317,9 +326,9 @@ def predict_train_test_api(received_data: InputData):
             if y_test_prediction is None or len(y_test_prediction) == 0:
                 raise ValueError("Y Test is Empty")
 
-        # if received_data.is_log_transformed is True:
-        #     y_train_prediction = np.round(np.expm1(y_train_prediction))
-        #     y_test_prediction = np.round(np.expm1(y_test_prediction))
+        if received_data.is_log_transformed is True:
+            y_train_prediction = np.round(np.expm1(y_train_prediction))
+            y_test_prediction = np.round(np.expm1(y_test_prediction))
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")
