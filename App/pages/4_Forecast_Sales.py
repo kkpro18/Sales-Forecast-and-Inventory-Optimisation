@@ -3,7 +3,7 @@ import asyncio
 import pandas as pd
 import streamlit as st
 import os
-from App.utils.forecasting_sales import get_seasonality, predict_sales_fb_prophet, predict_sales_arima_sarima, predict_sales_arimax_sarimax
+from App.utils.forecasting_sales import get_seasonality, predict_sales_arima_sarima, predict_sales_arimax_sarimax, predict_sales_fb_prophet
 from App.utils.session_manager import SessionManager
 
 st.set_page_config(
@@ -24,44 +24,44 @@ else:
     column_mapping = SessionManager.get_state("column_mapping")
     date_column = column_mapping["date_column"]
 
-    # train_daily_store_sales = SessionManager.get_state("train_daily_store_sales")
-    # train_daily_store_sales[date_column] = train_daily_store_sales[date_column].astype(str)
-    #
-    # test_daily_store_sales = SessionManager.get_state("test_daily_store_sales")
-    # test_daily_store_sales[date_column] = test_daily_store_sales[date_column].astype(str)
-    #
-    # train_daily_store_sales_with_exog = SessionManager.get_state("train_daily_store_sales_with_exog")
-    # train_daily_store_sales_with_exog[date_column] = train_daily_store_sales_with_exog[date_column].astype(str)
-    #
-    # test_daily_store_sales_with_exog = SessionManager.get_state("test_daily_store_sales_with_exog")
-    # test_daily_store_sales_with_exog[date_column] = test_daily_store_sales_with_exog[date_column].astype(str)
-    #
+    train_daily_store_sales = SessionManager.get_state("train_daily_store_sales")
+    train_daily_store_sales[date_column] = train_daily_store_sales[date_column].astype(str)
+
+    test_daily_store_sales = SessionManager.get_state("test_daily_store_sales")
+    test_daily_store_sales[date_column] = test_daily_store_sales[date_column].astype(str)
+
+    train_daily_store_sales_with_exog = SessionManager.get_state("train_daily_store_sales_with_exog")
+    train_daily_store_sales_with_exog[date_column] = train_daily_store_sales_with_exog[date_column].astype(str)
+
+    test_daily_store_sales_with_exog = SessionManager.get_state("test_daily_store_sales_with_exog")
+    test_daily_store_sales_with_exog[date_column] = test_daily_store_sales_with_exog[date_column].astype(str)
+
     get_seasonality()
     if SessionManager.is_there("selected_seasonality"):
-    #     st.markdown("### Store Wide Sales Forecasting")
-    #
-    #     if not os.path.isdir("models"):
-    #         os.mkdir("models")
-    #
-    #     asyncio.run(
-    #         predict_sales_arima_sarima(
-    #             train_daily_store_sales,
-    #             test_daily_store_sales,
-    #             column_mapping,
-    #         )
-    #     )
-    #     asyncio.run(
-    #         predict_sales_arimax_sarimax(
-    #             train_daily_store_sales_with_exog,
-    #             test_daily_store_sales_with_exog,
-    #             column_mapping,
-    #         )
-    #     )
-    #     asyncio.run(
-    #         predict_sales_fb_prophet(
-    #             train_daily_store_sales, test_daily_store_sales, train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, column_mapping,
-    #         )
-    #     )
+        st.markdown("### Store Wide Sales Forecasting")
+
+        if not os.path.isdir("models"):
+            os.mkdir("models")
+
+        asyncio.run(
+            predict_sales_arima_sarima(
+                train_daily_store_sales,
+                test_daily_store_sales,
+                column_mapping,
+            )
+        )
+        asyncio.run(
+            predict_sales_arimax_sarimax(
+                train_daily_store_sales_with_exog,
+                test_daily_store_sales_with_exog,
+                column_mapping,
+            )
+        )
+        asyncio.run(
+            predict_sales_fb_prophet(
+                train_daily_store_sales, test_daily_store_sales, train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, column_mapping,
+            )
+        )
 
 
 
@@ -165,11 +165,6 @@ else:
 
                 test_product_data_with_exog = test_product_sales_with_exog_grouped.get_group(product_name)
                 test_product_data_with_exog = test_product_data_with_exog.drop(columns=column_mapping["product_column"])
-
-                # Predict ARIMAX
-
-                st.write(test_product_data_with_exog.columns)
-                st.write(train_product_data_with_exog.columns)
 
                 if len(train_product_data) < 20:
                     st.warning("Not enough data for this product to train the model.")
