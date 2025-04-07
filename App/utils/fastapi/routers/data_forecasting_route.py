@@ -139,8 +139,7 @@ def store_fb_prophet_model_with_exog(received_data: InputData):
 
 # API Endpoint for fitting models in Parallel
 @router.post("/fit_all_models_in_parallel_api")
-async def fit_all_models_in_parallel_api(
-        received_data: InputData):  # https://blog.stackademic.com/fastapi-parallel-processing-1eaa67981ab9
+async def fit_all_models_in_parallel_api(received_data: InputData):  # https://blog.stackademic.com/fastapi-parallel-processing-1eaa67981ab9
     loop = asyncio.get_running_loop()
     if received_data.model_one == "arima" and received_data.model_two == "sarima":
         fitted_arima = loop.run_in_executor(executor, store_arima_model, received_data)

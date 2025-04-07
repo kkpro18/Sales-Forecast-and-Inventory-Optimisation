@@ -54,7 +54,6 @@ else:
         )
 
 
-
         st.markdown("### Individual Product Sales Forecasting")
         # initialise product index
         if not SessionManager.is_there("product_index"):
