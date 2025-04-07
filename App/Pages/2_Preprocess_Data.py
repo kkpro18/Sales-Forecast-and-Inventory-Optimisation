@@ -1,8 +1,6 @@
 import streamlit as st
 from App.utils.session_manager import SessionManager
-import pandas as pd
-
-from App.utils.data_preprocessing import format_dates, convert_to_dict, concatenate_exogenous_data, scale_exogenous_data, add_lag_features
+from App.Controllers import preprocessing_controller
 
 st.set_page_config(
     page_title="Preprocess Data",
@@ -20,82 +18,77 @@ if not SessionManager.is_there("data") or not SessionManager.is_there("column_ma
 else:
     data = SessionManager.get_state("data")
     column_mapping = SessionManager.get_state("column_mapping")
-    data_as_dictionary = convert_to_dict(data)
+    data_as_dictionary = preprocessing_controller.handle_dictionary_conversion(data)
     st.success(f"Successfully loaded data No. Rows: {len(data_as_dictionary)}")
     # check if data as dictionary contains anything invalid for json
     # st.write(data_as_dictionary)
 
 
     st.write("Applying Transformation to the Data")
-    json_response = SessionManager.fast_api("transform_data_api",
-                                            data=data_as_dictionary,
-                                            column_mapping=column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Transformed Data No. Rows: {len(json_response.json()['data'])}")
-        SessionManager.set_state("is_log_transformed", json_response.json()['is_log_transformed'])
+    response = preprocessing_controller.handle_data_transformation(data_as_dictionary, column_mapping)
+    if response.status_code == 200:
+        st.success(f"Successfully Transformed Data No. Rows: {len(response.json()['data'])}")
+        SessionManager.set_state("is_log_transformed", response.json()['is_log_transformed'])
     else:
-        st.error(json_response.text)
+        st.error(response.text)
 
     st.write("Handling Outliers")
-    json_response = SessionManager.fast_api("handle_outliers_api", data = json_response.json()['data'], column_mapping = column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Handled Outliers No. Rows: {len(json_response.json())}")
+    response = preprocessing_controller.handle_outliers(data=response.json()['data'], column_mapping=column_mapping)
+    if response.status_code == 200:
+        st.success(f"Successfully Handled Outliers No. Rows: {len(response.json())}")
     else:
-        st.error(json_response.text)
+        st.error(response.text)
 
     st.write("Fixing Dates and Splitting into Product Sales and Overall Store Sales")
-    json_response = SessionManager.fast_api("fix_dates_and_split_into_product_sales_and_daily_sales_api",
-                                            data=json_response.json(),
-                                            column_mapping=column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(json_response.json()['daily_store_sales'])}, Product Sales Size: {len(json_response.json()['daily_product_sales'])}")
+    response = preprocessing_controller.handle_dates_and_split_product_and_overall_sales(data=response.json(), column_mapping=column_mapping)
+    if response.status_code == 200:
+        st.success(f"Successfully Fixed Dates No. Rows: Daily Sales Size: {len(response.json()['daily_store_sales'])}, Product Sales Size: {len(response.json()['daily_product_sales'])}")
     else:
-        st.error(json_response.text)
+        st.error(response.text)
 
     st.write("Splitting into Train, Test")
-    json_response = SessionManager.fast_api("train_test_split_api",
-                                            daily_store_sales=json_response.json()['daily_store_sales'],
-                                            daily_product_sales=json_response.json()['daily_product_sales'],
-                                            column_mapping=column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Split Dataset  {len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(json_response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(json_response.json()['test_daily_product_sales'])}")
+    response = preprocessing_controller.handle_train_test_split(daily_store_sales=response.json()['daily_store_sales'], daily_product_sales=response.json()['daily_product_sales'], column_mapping=column_mapping)
+    if response.status_code == 200:
+        st.success(f"Successfully Split Dataset  {len(response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(response.json()['test_daily_product_sales'])}")
     else:
-        st.error(json_response.text)
+        st.error(response.text)
 
     st.write("Handling Missing Values ")
-    json_response = SessionManager.fast_api("handle_missing_values_api",
-                                            train_daily_store_sales=json_response.json()["train_daily_store_sales"],
-                                            test_daily_store_sales=json_response.json()["test_daily_store_sales"],
-                                            train_daily_product_sales=json_response.json()["train_daily_product_sales"],
-                                            test_daily_product_sales=json_response.json()["test_daily_product_sales"],
-                                            column_mapping=column_mapping)
-    if json_response.status_code == 200:
-        st.success(f"Successfully Handled Missing Values Train Size:{len(json_response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(json_response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(json_response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(json_response.json()['test_daily_product_sales'])}")
+    response = preprocessing_controller.handle_missing_values(
+                                       train_daily_store_sales=response.json()["train_daily_store_sales"],
+                                       test_daily_store_sales=response.json()["test_daily_store_sales"],
+                                       train_daily_product_sales=response.json()["train_daily_product_sales"],
+                                       test_daily_product_sales=response.json()["test_daily_product_sales"],
+                                       column_mapping=column_mapping)
+    if response.status_code == 200:
+        st.success(f"Successfully Handled Missing Values Train Size:{len(response.json()['train_daily_store_sales'])}, Test Daily Sales Size: {len(response.json()['test_daily_store_sales'])}, Train Product Daily Sales Size: {len(response.json()['train_daily_product_sales'])}, Test Product Daily Sales Size: {len(response.json()['test_daily_product_sales'])}")
     else:
-        st.error(json_response.text)
+        st.error(response.text)
 
     st.write("Processing Dates in the Correct Format")
-    train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales = pd.DataFrame(json_response.json()["train_daily_store_sales"]), pd.DataFrame(json_response.json()["test_daily_store_sales"]), pd.DataFrame(json_response.json()["train_daily_product_sales"]), pd.DataFrame(json_response.json()["test_daily_product_sales"])
-    train_daily_store_sales, test_daily_store_sales = format_dates(train_daily_store_sales, test_daily_store_sales, column_mapping)
-    train_daily_product_sales, test_daily_product_sales = format_dates(train_daily_product_sales, test_daily_product_sales, column_mapping)
+    train_daily_store_sales, test_daily_store_sales = preprocessing_controller.handle_date_formatting(response.json()["train_daily_store_sales"], response.json()["test_daily_store_sales"], column_mapping)
+
+    train_daily_product_sales, test_daily_product_sales = preprocessing_controller.handle_date_formatting(response.json()["train_daily_product_sales"], response.json()["test_daily_product_sales"], column_mapping)
     st.success(f"Successfully Formatted Dates Train Size: {len(train_daily_store_sales)}, Test Daily Sales Size: {len(test_daily_store_sales)}, Train Product Daily Sales Size: {len(train_daily_product_sales)}, Test Product Daily Sales Size: {len(test_daily_product_sales)}")
 
-    st.write("Concatenating Exogenous Variables")
-    selected_region = SessionManager.get_state("region")
     if SessionManager.get_state("region") != "N/A":
-        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
-    st.success(f"Successfully concatenating Exogenous Features")
+        st.write("Concatenating Exogenous Variables")
+        selected_region = SessionManager.get_state("region")
+        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog = preprocessing_controller.handle_inclusion_of_exogenous_variables(selected_region, train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
+        st.success(f"Successfully concatenating Exogenous Features")
 
 
-    st.write("Scaling Exogenous Variables")
-    selected_region = SessionManager.get_state("region")
-    if SessionManager.get_state("region") != "N/A":
-        train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled = scale_exogenous_data(train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog, column_mapping)
-    st.success(f"Successfully scaled Exogenous Features")
+        st.write("Scaling Exogenous Variables")
+        selected_region = SessionManager.get_state("region")
+        if SessionManager.get_state("region") != "N/A":
+            train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled = preprocessing_controller.handle_exogenous_scaling(train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog, column_mapping)
+        st.success(f"Successfully scaled Exogenous Features")
 
     st.write("Adding Lag Features")
-    train_daily_store_sales_with_exog_lagged, test_daily_store_sales_with_exog_lagged, train_daily_product_sales_with_exog_lagged, test_daily_product_sales_with_exog_lagged = add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled, column_mapping)
+    train_daily_store_sales_with_exog_lagged, test_daily_store_sales_with_exog_lagged, train_daily_product_sales_with_exog_lagged, test_daily_product_sales_with_exog_lagged = preprocessing_controller.handle_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_daily_product_sales_with_exog_scaled, test_daily_product_sales_with_exog_scaled, column_mapping)
     st.success(f"Successfully scaled Exogenous Features")
+
+    # forst omotoa;ose
 
     SessionManager.set_state("train_daily_store_sales", train_daily_store_sales)
     SessionManager.set_state("test_daily_store_sales", test_daily_store_sales)

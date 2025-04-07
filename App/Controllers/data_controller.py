@@ -13,7 +13,7 @@ def handle_uploaded_file(uploaded_dataset):
     except Exception as e:
         st.error(e)
         return None
-    finally:
+    else:
         return SessionManager.get_state("data")
 
 def handle_column_mapping(data):
@@ -26,7 +26,7 @@ def handle_column_mapping(data):
     except Exception as e:
         st.error(e)
         return None
-    finally:
+    else:
         return SessionManager.get_state("column_mapping")
 
 def handle_region_selection():
@@ -39,5 +39,5 @@ def handle_region_selection():
     except Exception as e:
         st.error(e)
         return None
-    finally:
+    else:
         return SessionManager.get_state("region")

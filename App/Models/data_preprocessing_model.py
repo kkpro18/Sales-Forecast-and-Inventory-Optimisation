@@ -6,7 +6,6 @@ from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 
 from App.utils.session_manager import SessionManager
-from App.utils.data_handling import read_file
 
 
 def convert_to_dict(data):
