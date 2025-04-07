@@ -12,6 +12,25 @@ total_overstocking_cost = 0
 total_understocking_cost = 0
 total_restock_cost = 0
 
+def input_details():
+    initial_stock = int(st.slider("The initial stock level: ", 10, 500, 25))
+    reorder_point = int(st.slider("The reorder point: ", 5, 350, 25))
+    max_inventory_level = int(st.slider("The max Inventory level: ", 20, 650, 25))
+    overstocking_cost = float(st.slider("The overstock cost per unit: ", 1, 350, 1))
+    understocking_cost = float(st.slider("The understock cost per unit: ", 1, 350, 10))
+    restock_cost = float(st.slider("The restock cost per order: ", 1, 600, 10))
+    demand_per_period = float(st.slider("The demand per period e.g 2 per day: ", 1, 100, 1))
+
+    return {
+        'initial_stock': initial_stock,
+        'reorder_point': reorder_point,
+        'max_inventory_level': max_inventory_level,
+        'overstocking_cost': overstocking_cost,
+        'understocking_cost': understocking_cost,
+        'restock_cost': restock_cost,
+        'demand_per_period': demand_per_period
+    }
+
 def reset_simulation():
     global total_overstocking_cost, total_understocking_cost, total_restock_cost
 
