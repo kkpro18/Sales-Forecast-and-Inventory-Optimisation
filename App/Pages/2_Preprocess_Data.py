@@ -1,6 +1,6 @@
 import streamlit as st
 from App.utils.session_manager import SessionManager
-from App.Controllers import preprocessing_controller
+from App.Controllers import data_preprocessing_controller
 
 st.set_page_config(
     page_title="Preprocess Data",

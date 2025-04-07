@@ -4,8 +4,8 @@ import pandas as pd
 from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
-
 from App.utils.session_manager import SessionManager
+from .data_handling_model import read_file
 
 
 def convert_to_dict(data):
