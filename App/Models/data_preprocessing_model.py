@@ -44,7 +44,8 @@ def handle_outliers(data, column_mapping):
         quartile_1 = product_group[quantity_sold_column].quantile(0.25)
         quartile_3 = product_group[quantity_sold_column].quantile(0.75)
         inter_quartile_range = quartile_3 - quartile_1
-        threshold = 1.5
+        # threshold = 1.5 # moderate outliers
+        threshold = 3 # severe outliers
         iqr_outlier_indices = product_group[(product_group[quantity_sold_column] < quartile_1 - threshold * inter_quartile_range)
                                             |
                                             (product_group[quantity_sold_column] > quartile_3 + threshold * inter_quartile_range)].index
