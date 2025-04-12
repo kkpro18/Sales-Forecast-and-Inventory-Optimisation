@@ -5,8 +5,9 @@ import plotly.graph_objects as go
 import pmdarima as pm
 from prophet import Prophet
 import streamlit as st
-from sklearn.metrics import root_mean_squared_error, mean_absolute_percentage_error
+from sklearn.metrics import root_mean_squared_error
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
+from permetrics.regression import RegressionMetric
 import uuid
 
 from App.utils.session_manager import SessionManager
@@ -115,23 +116,40 @@ def predict(model_path, forecast_periods=None, model_name=None, data=None):
             return model.predict(n_periods=forecast_periods)  # Test / Predict Future
 
 
+def mean_direction_accuracy(y_true, y_predicted):
+    """
+    function inspired by https://datasciencestunt.com/mean-directional-accuracy-of-time-series-forecast/
+    """
+    y_true = np.array(y_true)
+    y_predicted = np.array(y_predicted)
+
+    # calculate the signs of the differences between consecutive values
+    y_true_diff = np.diff(y_true)
+    y_true_signs = np.sign(y_true_diff)
+    y_predicted_diff = np.diff(y_predicted)
+    y_predicted_signs = np.sign(y_predicted_diff)
+
+    # count the number of times the signs are the same
+    num_correct_signs = np.sum(y_true_signs == y_predicted_signs)
+
+    # calculate the MDA value
+    mean_accuracy = num_correct_signs / (len(y_true) - 1)
+
+    return mean_accuracy
 def print_performance_metrics(y_train, y_train_prediction, y_test, y_test_prediction):
 
     y_train, y_train_prediction = np.array(y_train), np.array(y_train_prediction)
     y_test, y_test_prediction = np.array(y_test), np.array(y_test_prediction)
 
-    y_train_filtered, y_train_prediction_filtered = y_train[y_train != 0], y_train_prediction[y_train != 0]
-    y_test_filtered, y_test_prediction_filtered = y_test[y_test != 0], y_test_prediction[y_test != 0]
-
-
     performance_metrics = {
-        "Train: Mean Absolute Percentage Error (MAPE)": round(mean_absolute_percentage_error(y_train_filtered, y_train_prediction_filtered), 4),
-        "Test: Mean Absolute Percentage Error (MAPE)": round(mean_absolute_percentage_error(y_test_filtered, y_test_prediction_filtered), 4),
-        "Train: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_train_filtered, y_train_prediction_filtered), 4),
-        "Test: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_test_filtered, y_test_prediction_filtered), 4),
-        "Train: Mean Absolute Scaled Error (MASE)":round(mean_absolute_scaled_error(y_train_filtered, y_train_prediction_filtered, y_train=y_train_filtered), 4),
-        "Test: Mean Absolute Scaled Error (MASE)": round(mean_absolute_scaled_error(y_test_filtered, y_test_prediction_filtered, y_train=y_train_filtered), 4),
-
+        "Train: Mean Arc-Tangent Absolute Percentage Error (MAAPE) in Radians": round(RegressionMetric(y_train, y_train_prediction).mean_arctangent_absolute_percentage_error(), 4),
+        "Test: Mean Arc-Tangent Absolute Percentage Error (MAAPE) in Radians": round(RegressionMetric(y_test, y_test_prediction).mean_arctangent_absolute_percentage_error(), 4),
+        "Train: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_train, y_train_prediction), 4),
+        "Test: Root Mean Squared Error (RMSE)": round(root_mean_squared_error(y_test, y_test_prediction), 4),
+        "Train: Mean Absolute Scaled Error (MASE)":round(mean_absolute_scaled_error(y_train, y_train_prediction, y_train=y_train), 4),
+        "Test: Mean Absolute Scaled Error (MASE)": round(mean_absolute_scaled_error(y_test, y_test_prediction, y_train=y_train), 4),
+        "Train: Mean Direction Accuracy (MDA)": round(mean_direction_accuracy(y_train, y_train_prediction), 4),
+        "Test: Mean Direction Accuracy (MDA)": round(mean_direction_accuracy(y_test, y_test_prediction), 4),
     }
     left, right = st.columns(2)
     for metric,value in performance_metrics.items():
