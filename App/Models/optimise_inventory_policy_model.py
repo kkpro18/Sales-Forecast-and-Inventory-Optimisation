@@ -4,7 +4,7 @@ import streamlit as st
 
 def eoq_input_details():
     st.write(
-        "Please Submit Details about Current Product Inventory Order Details (Holding Cost and Demand share same period e.g Monthly)")
+        "Please Submit Details about Current Product Inventory Order Details")
     periodic_demand = int(st.slider("Expected Units To Be Sold Per Period X: ", 10, 10000, 25))
     order_cost = int(st.slider("Ordering Cost Per Order: ", 5, 20000, 25))
     holding_cost = int(st.slider("Holding Cost Per Unit Per Period X: ", 20, 5000, 25))
