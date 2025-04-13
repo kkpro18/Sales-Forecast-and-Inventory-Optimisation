@@ -8,9 +8,8 @@ import streamlit as st
 from sklearn.metrics import root_mean_squared_error
 from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
 from permetrics.regression import RegressionMetric
-import uuid
-
 from App.utils.session_manager import SessionManager
+import uuid
 
 def get_seasonality():
     seasonality_frequency = [4, 7, 12, 365]
@@ -46,8 +45,6 @@ def fit_sarima_model(y_train, seasonality):
 
     return sarima_model
 
-# TBD
-
 def fit_arimax_model(X_exog, y_train):
     arimax_model = pm.auto_arima(y=y_train,
                                  X=X_exog,
@@ -73,7 +70,6 @@ def fit_sarimax_model(X_exog, y_train, seasonality):
 
     return sarimax_model
 
-
 def fit_fb_prophet_model(full_data, column_mapping):
     data = full_data.rename(columns={column_mapping['date_column']: 'ds', column_mapping['quantity_sold_column']: 'y'}) # passing in expected format
     data['ds'] = pd.to_datetime(data['ds'])
@@ -82,7 +78,6 @@ def fit_fb_prophet_model(full_data, column_mapping):
     prophet_model.fit(data)
 
     return prophet_model
-
 def fit_fb_prophet_model_with_exog(full_data, column_mapping):
     data = full_data.rename(columns={column_mapping['date_column']: 'ds',
                                      column_mapping['quantity_sold_column']: 'y'})  # passing in expected format
@@ -115,7 +110,6 @@ def predict(model_path, forecast_periods=None, model_name=None, data=None):
         else:
             return model.predict(n_periods=forecast_periods)  # Test / Predict Future
 
-
 def mean_direction_accuracy(y_true, y_predicted):
     """
     function inspired by https://datasciencestunt.com/mean-directional-accuracy-of-time-series-forecast/
@@ -136,6 +130,7 @@ def mean_direction_accuracy(y_true, y_predicted):
     mean_accuracy = num_correct_signs / (len(y_true) - 1)
 
     return mean_accuracy
+
 def print_performance_metrics(y_train, y_train_prediction, y_test, y_test_prediction):
 
     y_train, y_train_prediction = np.array(y_train), np.array(y_train_prediction)
@@ -157,7 +152,7 @@ def print_performance_metrics(y_train, y_train_prediction, y_test, y_test_predic
             left.metric(label=metric, value=round(value, 4))
         else:
             right.metric(label=metric, value=round(value, 4))
-
+            
 def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping, multivariate=False):
     if multivariate:
         X_train = X_train[column_mapping["date_column"]]

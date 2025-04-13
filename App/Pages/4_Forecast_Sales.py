@@ -162,5 +162,5 @@ else:
             st.error(e)
 
 
-        st.page_link("pages/5_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate your inventory policy",
+        st.page_link("pages/5_Calculate_Optimal_Inventory_Policy.py", label="👈 Next Stage: Calculate Optimal inventory policy",
                      icon="⚙️")
