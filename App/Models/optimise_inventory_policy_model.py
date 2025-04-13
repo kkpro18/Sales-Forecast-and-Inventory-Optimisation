@@ -21,7 +21,6 @@ def eoq_input_details():
 def calculate_eoq(periodic_demand, order_cost, holding_cost):
     return round(np.sqrt((2 * periodic_demand * order_cost) / holding_cost))
 
-
 def newsvendor_input_details():
     st.write(
         "Please Submit Details about Current Product Inventory Order Details")
