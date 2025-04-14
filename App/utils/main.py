@@ -283,15 +283,16 @@ async def fit_models_in_parallel_api(received_data: InputData): # https://blog.s
 @app.post("/predict_train_test_api")
 def predict_train_test_api(received_data: InputData):
     column_mapping = received_data.column_mapping
+    if received_data.model_path is None:
+        raise ValueError("Model path is None")
     try:
-        if received_data.model_path is None:
-            raise ValueError("Model path is None")
         model_path = received_data.model_path
         if received_data.model_name == "arima" or received_data.model_name == "sarima":
             test_forecast_steps = received_data.test_forecast_steps
 
             y_train_prediction = predict(model_path=model_path)
             y_test_prediction = predict(model_path=model_path, forecast_periods=test_forecast_steps)
+
         elif received_data.model_name == "arimax" or received_data.model_name == "sarimax":
 
             test_forecast_steps = received_data.test_forecast_steps
@@ -326,6 +327,9 @@ def predict_train_test_api(received_data: InputData):
         if received_data.is_log_transformed is True:
             y_train_prediction = np.round(np.expm1(y_train_prediction))
             y_test_prediction = np.round(np.expm1(y_test_prediction))
+        else:
+            y_train_prediction = np.round(y_train_prediction)
+            y_test_prediction = np.round(y_test_prediction)
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")

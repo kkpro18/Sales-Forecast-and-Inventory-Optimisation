@@ -10,6 +10,8 @@ from sktime.performance_metrics.forecasting import mean_absolute_scaled_error
 from permetrics.regression import RegressionMetric
 from App.utils.session_manager import SessionManager
 import uuid
+import warnings
+warnings.filterwarnings('ignore')
 
 def get_seasonality():
     seasonality_frequency = [4, 7, 12, 365]
@@ -110,6 +112,21 @@ def predict(model_path, forecast_periods=None, model_name=None, data=None):
         else:
             return model.predict(n_periods=forecast_periods)  # Test / Predict Future
 
+def interpret_slope(date, y_test_prediction):
+    # needs to convert date from datetime to int
+    date = pd.to_datetime(date)
+    date = date-date.min() # we just count as steps e.g day 1
+    date = date.dt.days
+    slope = np.polyfit(date, y_test_prediction, 1)[0]
+    # st.write(slope)
+    if slope > 0:
+        st.write(":green[Expect More Sales]")
+    else:
+        st.write(":red[Take Action! Declining Sales]")
+
+
+
+
 def mean_direction_accuracy(y_true, y_predicted):
     """
     function inspired by https://datasciencestunt.com/mean-directional-accuracy-of-time-series-forecast/
@@ -152,7 +169,8 @@ def print_performance_metrics(y_train, y_train_prediction, y_test, y_test_predic
             left.metric(label=metric, value=round(value, 4))
         else:
             right.metric(label=metric, value=round(value, 4))
-            
+
+
 def plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping, multivariate=False):
     if multivariate:
         X_train = X_train[column_mapping["date_column"]]

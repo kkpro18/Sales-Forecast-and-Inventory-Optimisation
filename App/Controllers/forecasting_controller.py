@@ -66,6 +66,13 @@ def handle_seasonality_input():
 
 
 async def handle_arima_sarima_training_and_predictions(train, test, column_mapping, product_name=None):
+    """
+    Trains Arima, Sarima
+    Generates Predictions
+    Plots Prediction
+    Performance Metrics to evaluate model
+
+    """
     try:
         features = column_mapping["date_column"]
         target = column_mapping["quantity_sold_column"]
@@ -93,6 +100,7 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
 
                 data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_arima, y_test,
                                                                  y_test_prediction_arima)
+                data_forecasting_model.interpret_slope(X_test, y_test_prediction_arima)
                 data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arima,
                                                        column_mapping)
             else:
@@ -110,7 +118,7 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
                 st.markdown("### SARIMA Model:")
                 # st.write(joblib.load(sarima_model_path).summary())
                 # st.write(joblib.load(sarima_model_path).get_params())
-
+                data_forecasting_model.interpret_slope(X_test, y_test_prediction_sarima)
                 data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_sarima, y_test,
                                                                  y_test_prediction_sarima)
                 data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarima,
@@ -159,15 +167,15 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
                                                 is_log_transformed=SessionManager.get_state("is_log_transformed"))
 
         if json_response.status_code == 200:
-            y_train_prediction = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction = pd.Series(json_response.json()["y_test_prediction"])
+            y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_arimax = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### ARIMAX Model:")
             # st.write(joblib.load(arimax_model_path).summary())
             # st.write(joblib.load(arimax_model_path).get_params())
-
-            data_forecasting_model.print_performance_metrics(y_train, y_train_prediction, y_test, y_test_prediction)
-            data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping)
+            data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_arimax)
+            data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_arimax, y_test, y_test_prediction_arimax)
+            data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax, column_mapping)
         else:
             st.error(json_response.text)
 
@@ -181,15 +189,16 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
                                                 column_mapping=column_mapping)
 
         if json_response.status_code == 200:
-            y_train_prediction = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction = pd.Series(json_response.json()["y_test_prediction"])
+            y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### SARIMAX Model:")
             # st.write(joblib.load(sarimax_model_path).summary())
             # st.write(joblib.load(sarimax_model_path).get_params())
-
-            data_forecasting_model.print_performance_metrics(y_train, y_train_prediction, y_test, y_test_prediction)
-            data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping)
+            data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_sarimax)
+            data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_sarimax, y_test,
+                                                             y_test_prediction_sarimax)
+            data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarimax, column_mapping)
         else:
             st.error(json_response.text)
     else:
@@ -219,17 +228,24 @@ async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train
                                                 train=train.to_dict(orient='records'),
                                                 test=test.to_dict(orient='records'))
         if json_response.status_code == 200:
-            y_train_prediction = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction = pd.Series(json_response.json()["y_test_prediction"])
+            y_train_prediction_prophet_without_exog = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_prophet_without_exog = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### FB-Prophet Model Without Exogenous Features:")
 
-            data_forecasting_model.print_performance_metrics(train[column_mapping['quantity_sold_column']], y_train_prediction,
-                                      test[column_mapping['quantity_sold_column']], y_test_prediction)
+            data_forecasting_model.interpret_slope(test[column_mapping["date_column"]],  y_test_prediction_prophet_without_exog)
+            data_forecasting_model.print_performance_metrics(train[column_mapping['quantity_sold_column']],
+                                                             y_train_prediction_prophet_without_exog,
+                                                             test[column_mapping['quantity_sold_column']],
+                                                             y_test_prediction_prophet_without_exog)
             data_forecasting_model.plot_prediction(pd.to_datetime(train[column_mapping["date_column"]]),
-                            train[column_mapping['quantity_sold_column']],
-                            pd.to_datetime(test[column_mapping["date_column"]]),
-                            test[column_mapping['quantity_sold_column']], y_test_prediction, column_mapping)
+                                                   train[column_mapping['quantity_sold_column']],
+                                                   pd.to_datetime(test[column_mapping["date_column"]]),
+                                                   test[column_mapping['quantity_sold_column']],
+                                                   y_test_prediction_prophet_without_exog,
+                                                   column_mapping)
+
+
         else:
             st.error(json_response.text)
 
@@ -241,17 +257,23 @@ async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train
                                                 train=train_with_exog.to_dict(orient='records'),
                                                 test=test_with_exog.to_dict(orient='records'))
         if json_response.status_code == 200:
-            y_train_prediction = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction = pd.Series(json_response.json()["y_test_prediction"])
+            y_train_prediction_prophet_with_exog = pd.Series(json_response.json()["y_train_prediction"])
+            y_test_prediction_prophet_with_exog = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### FB-Prophet Model With Exogenous Features:")
 
-            data_forecasting_model.print_performance_metrics(train[column_mapping['quantity_sold_column']], y_train_prediction,
-                                      test[column_mapping['quantity_sold_column']], y_test_prediction)
+            data_forecasting_model.interpret_slope(test[column_mapping["date_column"]],
+                                                   y_test_prediction_prophet_with_exog)
+            data_forecasting_model.print_performance_metrics(train[column_mapping['quantity_sold_column']],
+                                                             y_train_prediction_prophet_with_exog,
+                                                             test[column_mapping['quantity_sold_column']],
+                                                             y_test_prediction_prophet_with_exog)
             data_forecasting_model.plot_prediction(pd.to_datetime(train[column_mapping["date_column"]]),
-                            train[column_mapping['quantity_sold_column']],
-                            pd.to_datetime(test[column_mapping["date_column"]]),
-                            test[column_mapping['quantity_sold_column']], y_test_prediction, column_mapping)
+                                                   train[column_mapping['quantity_sold_column']],
+                                                   pd.to_datetime(test[column_mapping["date_column"]]),
+                                                   test[column_mapping['quantity_sold_column']],
+                                                   y_test_prediction_prophet_with_exog,
+                                                   column_mapping)
         else:
             st.error(json_response.text)
     else:

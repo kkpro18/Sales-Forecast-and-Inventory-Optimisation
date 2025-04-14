@@ -190,6 +190,7 @@ def predict_train_test_api(received_data: InputData):
             y_test_prediction = data_forecasting_model.predict(model_path=model_path, forecast_periods=test_forecast_steps,
                                         data=test_exog_features)
 
+
         elif received_data.model_name == "fb_prophet_with_exog" or received_data.model_name == "fb_prophet_without_exog":
             if received_data.train is None or len(received_data.train) == 0:
                 raise ValueError("Train data is None")
@@ -215,6 +216,10 @@ def predict_train_test_api(received_data: InputData):
         if received_data.is_log_transformed is True:
             y_train_prediction = np.round(np.expm1(y_train_prediction))
             y_test_prediction = np.round(np.expm1(y_test_prediction))
+        else:
+            y_train_prediction = np.round(y_train_prediction)
+            y_test_prediction = np.round(y_test_prediction)
+
 
         if y_train_prediction.isna().any():
             raise ValueError("y_train_prediction contains NaNs")
