@@ -5,7 +5,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from App.utils.session_manager import SessionManager
-from .data_handling_model import read_file
+from App.Models.data_handling_model import read_file
 
 
 def convert_to_dict(data):
@@ -23,7 +23,7 @@ def transform_data(data, column_mapping):
     if data[sales_column].skew() > 1:
         data[sales_column] = np.log1p(data[sales_column])
         st.success("Sales Column has been transformed using log transformation as it is skewed")
-        is_log_transformed=True
+        is_log_transformed = True
     else:
         st.success("Sales Column is not skewed, no transformation applied")
         is_log_transformed = False
@@ -45,10 +45,11 @@ def handle_outliers(data, column_mapping):
         quartile_3 = product_group[quantity_sold_column].quantile(0.75)
         inter_quartile_range = quartile_3 - quartile_1
         # threshold = 1.5 # moderate outliers
-        threshold = 3 # severe outliers
-        iqr_outlier_indices = product_group[(product_group[quantity_sold_column] < quartile_1 - threshold * inter_quartile_range)
-                                            |
-                                            (product_group[quantity_sold_column] > quartile_3 + threshold * inter_quartile_range)].index
+        threshold = 3  # severe outliers
+        iqr_outlier_indices = product_group[
+            (product_group[quantity_sold_column] < quartile_1 - threshold * inter_quartile_range)
+            |
+            (product_group[quantity_sold_column] > quartile_3 + threshold * inter_quartile_range)].index
         # median absolute deviation to handle outliers
 
         median_sales = np.median(product_group[quantity_sold_column])
@@ -67,12 +68,13 @@ def handle_outliers(data, column_mapping):
 
     st.write(f"No. Outliers in Sales Column {outlier_values.shape[0]}")
     st.write(f"Total No. Values in Sales Column {data[quantity_sold_column].shape[0]}")
-    outlier_proportion = round(outlier_values.shape[0] / data[quantity_sold_column].shape[0] * 100,2)
+    outlier_proportion = round(outlier_values.shape[0] / data[quantity_sold_column].shape[0] * 100, 2)
     st.write(f"Proportion of Outliers to Total Data {outlier_proportion}%")
 
     if outlier_proportion >= 20:
         # since outliers are more than 15% of the data, we will keep mean of the products for each product
-        data.loc[outlier_indices, quantity_sold_column] = None # outliers are removed prior to calculating mean to prevent bias
+        data.loc[
+            outlier_indices, quantity_sold_column] = None  # outliers are removed prior to calculating mean to prevent bias
         data[quantity_sold_column] = data.groupby(product_column)[quantity_sold_column].transform('mean').round()
         st.success(f"{outlier_values.shape[0]} outliers have been processed")
     else:
@@ -80,6 +82,7 @@ def handle_outliers(data, column_mapping):
         st.success(f"{outlier_values.shape[0]} outliers have been removed")
 
     return data
+
 
 def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping):
     date_column = column_mapping["date_column"]
@@ -96,9 +99,10 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
     daily_store_sales = data.groupby(column_mapping["date_column"], as_index=False).agg(
         {column_mapping["quantity_sold_column"]: 'sum'})
     date_range = pd.date_range(start=data[column_mapping["date_column"]].min(),
-                                     end=data[column_mapping["date_column"]].max(), freq='D')
+                               end=data[column_mapping["date_column"]].max(), freq='D')
     daily_dates_df = pd.DataFrame(date_range, columns=[column_mapping["date_column"]])
-    daily_store_sales = pd.merge(daily_dates_df, daily_store_sales, on=column_mapping["date_column"], how='left', indicator=True)
+    daily_store_sales = pd.merge(daily_dates_df, daily_store_sales, on=column_mapping["date_column"], how='left',
+                                 indicator=True)
     # fills in missing columns from new added dates
     daily_store_sales.loc[daily_store_sales["_merge"] == "left_only", column_mapping["quantity_sold_column"]] = 0
     daily_store_sales = daily_store_sales.drop(columns=["_merge"])
@@ -115,7 +119,7 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
         product_daily_dates_df = pd.DataFrame(product_date_range, columns=[column_mapping["date_column"]])
         group = pd.merge(product_daily_dates_df, group, on=column_mapping["date_column"], how='left', indicator=True)
 
-        average_product_price = round(group.loc[group["_merge"] == 'both'][column_mapping["price_column"]].mean(),2)
+        average_product_price = round(group.loc[group["_merge"] == 'both'][column_mapping["price_column"]].mean(), 2)
         most_frequent_product = group.loc[group["_merge"] == 'both'][column_mapping["product_column"]].mode()[0]
 
         group.loc[group["_merge"] == 'left_only', column_mapping["price_column"]] = average_product_price
@@ -126,7 +130,7 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
         return group
 
     daily_product_sales = data.groupby([column_mapping["product_column"], column_mapping["date_column"]],
-                                        as_index=False).agg(
+                                       as_index=False).agg(
         {
             column_mapping["price_column"]: 'mean',
             column_mapping["quantity_sold_column"]: 'sum'
@@ -135,8 +139,8 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
         lambda group: fill_missing_date_range_per_group(group, column_mapping))
     daily_product_sales = daily_product_sales.reset_index(drop=True)
 
-
     return daily_store_sales, daily_product_sales
+
 
 def split_training_testing_data(data, column_mapping):
     # 70 : 30 split
@@ -159,17 +163,19 @@ def split_training_testing_data(data, column_mapping):
         test = test[test[product_column].isin(train[product_column].unique())]
 
     return train, test
+
+
 def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]
     quantity_sold_column = column_mapping["quantity_sold_column"]
 
-
     if train.isnull().values.any() or test.isnull().values.any():
         # rows_with_missing_values = data[data.isnull().any(axis=1)]
         st.write("Data contains Missing or Null values")
 
-        if train[quantity_sold_column].isnull().values.any() or test[quantity_sold_column].isnull().values.any(): # if target column has missing values, no point imputing so drop
+        if train[quantity_sold_column].isnull().values.any() or test[
+            quantity_sold_column].isnull().values.any():  # if target column has missing values, no point imputing so drop
             train.dropna(subset=[quantity_sold_column], inplace=True)
             test.dropna(subset=[quantity_sold_column], inplace=True)
 
@@ -198,6 +204,7 @@ def handle_missing_values(train, test, column_mapping):
 
     return train, test
 
+
 def format_dates(train, test, column_mapping):
     date_column = column_mapping["date_column"]
 
@@ -209,10 +216,12 @@ def format_dates(train, test, column_mapping):
 
     return train, test
 
+
 def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales,
                                train_daily_product_sales, test_daily_product_sales, column_mapping):
     if selected_region == "UK":
-        exogenous_data = read_file("App/AppMaintenance/raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv")
+        exogenous_data = read_file(
+            "App/AppMaintenance/raw_macro_economical_data/UK/Processed/uk_macro_economical_data.csv")
         exog_date_column = "Date"
         exogenous_data[exog_date_column] = pd.to_datetime(exogenous_data[exog_date_column], format="%Y-%m-%d",
                                                           errors="coerce")
@@ -224,7 +233,8 @@ def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_da
         test_daily_store_sales_with_exog = pd.merge(test_daily_store_sales, exogenous_data,
                                                     on=column_mapping["date_column"], how='left')
         train_product_sales_with_exog = pd.merge(train_daily_product_sales, exogenous_data,
-                                                 on=column_mapping["date_column"], how='left') # since it has many same dates will it merge correctly due to diff products
+                                                 on=column_mapping["date_column"],
+                                                 how='left')  # since it has many same dates will it merge correctly due to diff products
         test_product_sales_with_exog = pd.merge(test_daily_product_sales, exogenous_data,
                                                 on=column_mapping["date_column"], how='left')
 
@@ -232,9 +242,11 @@ def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_da
 
 
     elif selected_region == "USA":
-        exogenous_data = read_file("App/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv")
+        exogenous_data = read_file(
+            "App/AppMaintenance/raw_macro_economical_data/USA/Processed/usa_macro_economical_data.csv")
         exog_date_column = "Date"
-        exogenous_data[exog_date_column] = pd.to_datetime(exogenous_data[exog_date_column], format="%Y-%m-%d", errors="coerce")
+        exogenous_data[exog_date_column] = pd.to_datetime(exogenous_data[exog_date_column], format="%Y-%m-%d",
+                                                          errors="coerce")
         exogenous_data[exog_date_column] = exogenous_data[exog_date_column].dt.tz_localize(None)
         exogenous_data = exogenous_data.rename(columns={exog_date_column: column_mapping["date_column"]})
 
@@ -247,19 +259,21 @@ def concatenate_exogenous_data(selected_region, train_daily_store_sales, test_da
         test_product_sales_with_exog = pd.merge(test_daily_product_sales, exogenous_data,
                                                 on=column_mapping["date_column"], how='left')
 
-
         return train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog
+    return None
+
 
 # scale exog X only, robust scaler to prevent outliers, MINMAX for fixed range, standard scaler for normal distribution - prioritise standard scaler mostly
 def scale_exogenous_data(
         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
         test_product_sales_with_exog, column_mapping):
-
     train_daily_store_sales_with_exog_scaled = train_daily_store_sales_with_exog.copy()
-    train_daily_store_sales_with_exog_scaled.drop(columns=[column_mapping["date_column"], column_mapping["quantity_sold_column"]], inplace=True)
+    train_daily_store_sales_with_exog_scaled.drop(
+        columns=[column_mapping["date_column"], column_mapping["quantity_sold_column"]], inplace=True)
 
     test_daily_store_sales_with_exog_scaled = test_daily_store_sales_with_exog.copy()
-    test_daily_store_sales_with_exog_scaled.drop(columns=[column_mapping["date_column"], column_mapping["quantity_sold_column"]], inplace=True)
+    test_daily_store_sales_with_exog_scaled.drop(
+        columns=[column_mapping["date_column"], column_mapping["quantity_sold_column"]], inplace=True)
 
     store_scaler = StandardScaler()
     store_scaler.set_output(transform="pandas")
@@ -283,7 +297,6 @@ def scale_exogenous_data(
     train_product_sales_with_exog_scaled = product_scaler.transform(train_product_sales_with_exog_scaled)
     test_product_sales_with_exog_scaled = product_scaler.transform(test_product_sales_with_exog_scaled)
 
-
     for column in column_mapping.values():
         if column not in [column_mapping["price_column"], column_mapping["product_column"]]:
             train_daily_store_sales_with_exog_scaled[column] = train_daily_store_sales_with_exog[column].copy()
@@ -292,38 +305,37 @@ def scale_exogenous_data(
         train_product_sales_with_exog_scaled[column] = train_product_sales_with_exog[column].copy()
         test_product_sales_with_exog_scaled[column] = test_product_sales_with_exog[column].copy()
 
-
     return train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled
+
 
 def add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
                      train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled, column_mapping):
+    train_daily_store_sales_with_exog_scaled["-1day"] = train_daily_store_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(1).fillna(0)  # first few rows may contain nulls after shifting
+    train_daily_store_sales_with_exog_scaled["-2day"] = train_daily_store_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(2).fillna(0)
+    train_daily_store_sales_with_exog_scaled["-3day"] = train_daily_store_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(3).fillna(0)
 
-    train_daily_store_sales_with_exog_scaled["-1day"] = train_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1).fillna(0) # first few rows may contain nulls after shifting
-    train_daily_store_sales_with_exog_scaled["-2day"] = train_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2).fillna(0)
-    train_daily_store_sales_with_exog_scaled["-3day"] = train_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3).fillna(0)
+    test_daily_store_sales_with_exog_scaled["-1day"] = test_daily_store_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(1).fillna(0)
+    test_daily_store_sales_with_exog_scaled["-2day"] = test_daily_store_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(2).fillna(0)
+    test_daily_store_sales_with_exog_scaled["-3day"] = test_daily_store_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(3).fillna(0)
 
-    test_daily_store_sales_with_exog_scaled["-1day"] = test_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1).fillna(0)
-    test_daily_store_sales_with_exog_scaled["-2day"] = test_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2).fillna(0)
-    test_daily_store_sales_with_exog_scaled["-3day"] = test_daily_store_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3).fillna(0)
+    train_product_sales_with_exog_scaled["-1day"] = train_product_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(1).fillna(0)
+    train_product_sales_with_exog_scaled["-2day"] = train_product_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(2).fillna(0)
+    train_product_sales_with_exog_scaled["-3day"] = train_product_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(3).fillna(0)
 
-    train_product_sales_with_exog_scaled["-1day"] = train_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1).fillna(0)
-    train_product_sales_with_exog_scaled["-2day"] = train_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2).fillna(0)
-    train_product_sales_with_exog_scaled["-3day"] = train_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3).fillna(0)
-
-    test_product_sales_with_exog_scaled["-1day"] = test_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(1).fillna(0)
-    test_product_sales_with_exog_scaled["-2day"] = test_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(2).fillna(0)
-    test_product_sales_with_exog_scaled["-3day"] = test_product_sales_with_exog_scaled[column_mapping["quantity_sold_column"]].shift(3).fillna(0)
+    test_product_sales_with_exog_scaled["-1day"] = test_product_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(1).fillna(0)
+    test_product_sales_with_exog_scaled["-2day"] = test_product_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(2).fillna(0)
+    test_product_sales_with_exog_scaled["-3day"] = test_product_sales_with_exog_scaled[
+        column_mapping["quantity_sold_column"]].shift(3).fillna(0)
 
     return train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled
-
-
-
-
-
-
-
-
-
-
-
-
