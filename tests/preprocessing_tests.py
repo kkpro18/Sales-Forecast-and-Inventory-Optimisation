@@ -6,10 +6,9 @@ import os
 from App.Controllers import data_preprocessing_controller
 import numpy
 
-
-class TestControllers:
+class PreProcessingTests:
     """
-    Pre-Processing Controller Tests
+    Pre-Processing Tests
     ENSURE FAST_API is Running
     """
 
@@ -334,7 +333,7 @@ class TestControllers:
         Tests if Exogenous Variables are Included
         """
 
-        os.chdir("../") # needs access to App Dir
+        os.chdir("../")  # needs access to App Dir
 
         # Mock data - dates are older due to exog data age
         mock_data = pd.DataFrame(data=
@@ -394,7 +393,7 @@ class TestControllers:
         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
             "UK",
             train_daily_store_sales, test_daily_store_sales,
-            train_daily_product_sales,  test_daily_product_sales,
+            train_daily_product_sales, test_daily_product_sales,
             column_mapping)
 
         assert set(train_daily_store_sales_with_exog.columns) != set(pd.DataFrame(train_daily_store_sales).columns)
@@ -402,6 +401,7 @@ class TestControllers:
 
         assert set(train_product_sales_with_exog.columns) != set(pd.DataFrame(train_daily_product_sales).columns)
         assert set(test_product_sales_with_exog.columns) != set(pd.DataFrame(test_daily_product_sales).columns)
+
     def test_handle_exogenous_scaling(self):
         os.chdir("../")  # needs access to App Dir
 
@@ -470,16 +470,17 @@ class TestControllers:
             train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
             test_product_sales_with_exog, column_mapping)
 
-        scaled_data = [train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled,
+        scaled_data = [train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
+                       train_product_sales_with_exog_scaled,
                        test_product_sales_with_exog_scaled]
 
-        exog_columns = list(train_daily_store_sales_with_exog_scaled.columns.difference(train_daily_store_sales.columns))
+        exog_columns = list(
+            train_daily_store_sales_with_exog_scaled.columns.difference(train_daily_store_sales.columns))
 
         for data in scaled_data:
             for exog_column in exog_columns:
-                assert almost_equal_floats(np.mean(data[exog_column]), 0),f"Column: {exog_column} is not scaled correctly, the mean is not removed/0"
-
-
+                assert almost_equal_floats(np.mean(data[exog_column]),
+                                           0), f"Column: {exog_column} is not scaled correctly, the mean is not removed/0"
 
     def test_handle_lag_features(self):
         os.chdir("../")  # needs access to App Dir
@@ -540,51 +541,30 @@ class TestControllers:
             column_mapping)
 
         train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
-                                                                                        "UK",
-                                                                                        train_daily_store_sales, test_daily_store_sales,
-                                                                                        train_daily_product_sales, test_daily_product_sales,
-                                                                                        column_mapping)
+            "UK",
+            train_daily_store_sales, test_daily_store_sales,
+            train_daily_product_sales, test_daily_product_sales,
+            column_mapping)
 
         train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled = data_preprocessing_controller.handle_exogenous_scaling(
-                                                                                        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
-                                                                                        test_product_sales_with_exog, column_mapping)
+            train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
+            test_product_sales_with_exog, column_mapping)
 
         scaled_data = [train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
-                                                                                       train_product_sales_with_exog_scaled,
-                                                                                       test_product_sales_with_exog_scaled]
+                       train_product_sales_with_exog_scaled,
+                       test_product_sales_with_exog_scaled]
 
         train_daily_store_sales_with_exog_scaled_lagged, test_daily_store_sales_with_exog_scaled_lagged, train_product_sales_with_exog_scaled_lagged, test_product_sales_with_exog_scaled_lagged = (
             data_preprocessing_controller.handle_lag_features(
-                                                                                            train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled,
-                                                                                            test_product_sales_with_exog_scaled, column_mapping))
+                train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
+                train_product_sales_with_exog_scaled,
+                test_product_sales_with_exog_scaled, column_mapping))
 
         lag_data = [train_daily_store_sales_with_exog_scaled_lagged,
                     test_daily_store_sales_with_exog_scaled_lagged,
-                   train_product_sales_with_exog_scaled_lagged,
-                   test_product_sales_with_exog_scaled_lagged]
+                    train_product_sales_with_exog_scaled_lagged,
+                    test_product_sales_with_exog_scaled_lagged]
         lag_columns = ["-1day", "-2day", "-3day"]
         for data in lag_data:
             for lag_column in lag_columns:
                 assert lag_column in data.columns.tolist()
-
-    """
-    Forecasting Controller Tests
-    """
-
-    def test_handle_store_sales_data(self):
-        self.fail()
-
-    def test_handle_product_sales_data(self):
-        self.fail()
-
-    def test_handle_seasonality_input(self):
-        self.fail()
-
-    def test_handle_arima_sarima_training_and_predictions(self):
-        self.fail()
-
-    def test_handle_arimax_sarimax_training_and_predictions(self):
-        self.fail()
-
-    def test_handle_fb_prophet_with_and_without_exog_training_and_predictions(self):
-        self.fail()
