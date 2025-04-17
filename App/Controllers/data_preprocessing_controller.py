@@ -1,3 +1,5 @@
+import os
+
 import pandas as pd
 
 from App.Models.data_preprocessing_model import convert_to_dict, format_dates, concatenate_exogenous_data, scale_exogenous_data, add_lag_features
@@ -13,7 +15,6 @@ def handle_dictionary_conversion(data):
         data_as_dictionary = convert_to_dict(data)
     except Exception as e:
         st.error(e)
-        return None
     else:
         return data_as_dictionary
 
@@ -59,7 +60,7 @@ def handle_dates_and_split_product_and_overall_sales(data, column_mapping):
 
 def handle_train_test_split(daily_store_sales, daily_product_sales, column_mapping):
     """
-    Handles the train test split for the uploaded data and returns the train and test data.
+    Handles the train test split (80:20) for the uploaded data and returns the train and test data.
     """
     try:
         json_response = SessionManager.fast_api("train_test_split_api",
@@ -110,6 +111,7 @@ def handle_inclusion_of_exogenous_variables(selected_region, train_daily_store_s
         data = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales,
                                           train_daily_product_sales, test_daily_product_sales, column_mapping)
     except Exception as e:
+        error = os.getcwd()
         st.error(e)
         return None
     else:

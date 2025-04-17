@@ -105,15 +105,19 @@ else:
 
     st.markdown("### Train Data")
 
-    st.write("train_daily_store_sales_with_exog_scaled_lagged", len(train_daily_store_sales_with_exog_lagged))
+    st.write("train_daily_store_sales", train_daily_store_sales.shape)
+    st.write("train_daily_product_sales", train_daily_product_sales.shape)
 
-    st.write("train_daily_product_sales_with_exog_scaled_lagged", len(train_daily_product_sales_with_exog_lagged))
+    st.write("train_daily_store_sales_with_exog_scaled_lagged", train_daily_store_sales_with_exog_lagged.shape)
+    st.write("train_daily_product_sales_with_exog_scaled_lagged", train_daily_product_sales_with_exog_lagged.shape)
 
     st.markdown("### Test Data")
 
-    st.write("test_daily_store_sales_with_exog_scaled_lagged", len(test_daily_store_sales_with_exog_lagged))
+    st.write("test_daily_store_sales", test_daily_store_sales.shape)
+    st.write("test_daily_product_sales", test_daily_product_sales.shape)
 
-    st.write("test_product_sales_with_exog_scaled_lagged", len(test_daily_product_sales_with_exog_lagged))
+    st.write("test_daily_store_sales_with_exog_scaled_lagged", test_daily_store_sales_with_exog_lagged.shape)
+    st.write("test_product_sales_with_exog_scaled_lagged", test_daily_product_sales_with_exog_lagged.shape)
 
     SessionManager.set_state("preprocess_data_complete",True)
 

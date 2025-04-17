@@ -9,8 +9,10 @@ def handle_store_wide_sales_visualisation(store_data, column_mapping):
         data_visualisation_model.visualise_storewide_sales(store_data, column_mapping)
     except Exception as e:
         st.error(e)
+        return None
     else:
         st.success("Store-wide sales visualised successfully.")
+        return True
 
 def handle_product_level_sales_visualisation(product_data, column_mapping):
     """
@@ -20,5 +22,7 @@ def handle_product_level_sales_visualisation(product_data, column_mapping):
         data_visualisation_model.visualise_individual_product_sales(product_data, column_mapping)
     except Exception as e:
         st.error(e)
+        return None
     else:
         st.success("Product-level sales visualised successfully.")
+        return True
