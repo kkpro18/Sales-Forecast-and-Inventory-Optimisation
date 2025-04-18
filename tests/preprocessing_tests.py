@@ -1,6 +1,9 @@
+import time
 import pandas as pd
 import numpy as np
 import os
+import subprocess
+import pytest
 
 from pydantic.v1.utils import almost_equal_floats
 
@@ -11,6 +14,28 @@ class TestPreProcessing:
     Pre-Processing Tests
     ENSURE FAST_API is Running
     """
+
+    @pytest.fixture(scope='session', autouse=True)
+    def before_all(self):
+        """
+        This function runs before all tests
+        """
+        print("Starting FastAPI server...")
+        os.chdir("../") # sets to root dir to run fast api as well as for exogenous data
+        process = subprocess.Popen(
+            ["uvicorn", "App.utils.fastapi.main:app", "--port", "8000"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE
+        )
+
+        time.sleep(2)  # Give uvicorn time to start
+
+        yield  # tests will run here
+
+        print("Stopping FastAPI server...")
+        process.terminate()
+        process.wait()
+
 
     def test_handle_dictionary_conversion(self):
         """
@@ -331,9 +356,8 @@ class TestPreProcessing:
     def test_handle_inclusion_of_exogenous_variables(self):
         """
         Tests if Exogenous Variables are Included
+        Will not Work Without Changing Dir to "../", ideally run all and pytest fixture will redirect to root directory
         """
-
-        os.chdir("../")  # needs access to App Dir, need to change once only
 
         # Mock data - dates are older due to exogenous data age
         mock_data = pd.DataFrame(data=
@@ -402,6 +426,10 @@ class TestPreProcessing:
         assert set(train_product_sales_with_exogenous.columns) != set(pd.DataFrame(train_daily_product_sales).columns)
         assert set(test_product_sales_with_exogenous.columns) != set(pd.DataFrame(test_daily_product_sales).columns)
     def test_handle_exogenous_scaling(self):
+        """
+        Tests if exogenous data is scaled properly i.e mean set to 0
+        Will not Work Without Changing Dir to "../", ideally run all and pytest fixture will redirect to root directory
+        """
 
         # Mock data - dates are older due to exogenous data age
         mock_data = pd.DataFrame(data=
@@ -480,6 +508,10 @@ class TestPreProcessing:
                 assert almost_equal_floats(np.mean(data[exogenous_column]),
                                            0), f"Column: {exogenous_column} is not scaled correctly, the mean is not removed/0"
     def test_handle_lag_features(self):
+        """
+        Test if lag features are added to the dataset
+        Will not Work Without Changing Dir to "../", ideally run all and pytest fixture will redirect to root directory
+        """
         # Mock data - dates are older due to exogenous data age
         mock_data = pd.DataFrame(data=
         {
