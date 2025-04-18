@@ -41,6 +41,7 @@ httpx==0.28.1
 idna==3.10
 importlib_metadata==8.6.1
 importlib_resources==6.5.2
+iniconfig==2.1.0
 itsdangerous==2.2.0
 Jinja2==3.1.6
 joblib==1.4.2
@@ -66,8 +67,10 @@ opentelemetry-semantic-conventions==0.52b1
 packaging==24.2
 pandas==2.2.3
 patsy==1.0.1
+permetrics==2.0.0
 pillow==11.1.0
 plotly==6.0.0
+pluggy==1.5.0
 pmdarima==2.0.4
 prophet==1.1.6
 protobuf==5.29.3
@@ -79,6 +82,7 @@ pydantic_core==2.27.2
 pydeck==0.9.1
 Pygments==2.19.1
 pyparsing==3.2.1
+pytest==8.3.5
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 python-multipart==0.0.20
@@ -108,6 +112,7 @@ streamlit==1.43.1
 tenacity==9.0.0
 threadpoolctl==3.5.0
 toml==0.10.2
+tomli==2.2.1
 tornado==6.4.2
 tqdm==4.67.1
 typer==0.15.2

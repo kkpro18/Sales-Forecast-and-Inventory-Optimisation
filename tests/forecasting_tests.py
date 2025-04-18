@@ -1,4 +1,4 @@
-class ForecastingTests:
+class TestForecasting:
     """
     ENSURE FAST_API is Running
     Forecasting Controller Tests

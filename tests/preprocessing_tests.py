@@ -1,12 +1,12 @@
-import numpy as np
-import pytest
 import pandas as pd
-from pydantic.v1.utils import almost_equal_floats
+import numpy as np
 import os
-from App.Controllers import data_preprocessing_controller
-import numpy
 
-class PreProcessingTests:
+from pydantic.v1.utils import almost_equal_floats
+
+from App.Controllers import data_preprocessing_controller
+
+class TestPreProcessing:
     """
     Pre-Processing Tests
     ENSURE FAST_API is Running
@@ -60,7 +60,7 @@ class PreProcessingTests:
 
         # Check if the data is transformed correctly
         assert transformed_data is not None, f"Data transformation returned {type(transformed_data)}"
-        assert is_log_transformed == True, f"Data transformation failed, transformation status: {is_log_transformed} "
+        assert is_log_transformed is True, f"Data transformation failed, transformation status: {is_log_transformed} "
 
     def test_handle_outliers(self):
         """
@@ -197,7 +197,7 @@ class PreProcessingTests:
         store_sales_train_proportion = len(train_daily_store_sales) / (len(train_daily_store_sales) + len(
             test_daily_store_sales))
 
-        # almost equal used as time-based splitting means the proportions are not exactly 80:20, hence threshold was also changed from strict default to +-0.05%
+        # almost equal used as time-based splitting means the proportions are not exactly 80:20, so the threshold was also changed from strict default to +-0.05%
         assert almost_equal_floats(product_sales_train_proportion, 0.8,
                                    delta=0.05), "Product Sales is not split in 80:20"
         assert almost_equal_floats(store_sales_train_proportion, 0.8, delta=0.05), "Store Sales is not split in 80:20"
@@ -333,9 +333,9 @@ class PreProcessingTests:
         Tests if Exogenous Variables are Included
         """
 
-        os.chdir("../")  # needs access to App Dir
+        os.chdir("../")  # needs access to App Dir, need to change once only
 
-        # Mock data - dates are older due to exog data age
+        # Mock data - dates are older due to exogenous data age
         mock_data = pd.DataFrame(data=
         {
             "date": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-06", "2024-01-07",
@@ -390,22 +390,20 @@ class PreProcessingTests:
             train_daily_product_sales_handled_missing_values, test_daily_product_sales_handled_missing_values,
             column_mapping)
 
-        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
+        train_daily_store_sales_with_exogenous, test_daily_store_sales_with_exogenous, train_product_sales_with_exogenous, test_product_sales_with_exogenous = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
             "UK",
             train_daily_store_sales, test_daily_store_sales,
             train_daily_product_sales, test_daily_product_sales,
             column_mapping)
 
-        assert set(train_daily_store_sales_with_exog.columns) != set(pd.DataFrame(train_daily_store_sales).columns)
-        assert set(test_daily_store_sales_with_exog.columns) != set(pd.DataFrame(test_daily_store_sales).columns)
+        assert set(train_daily_store_sales_with_exogenous.columns) != set(pd.DataFrame(train_daily_store_sales).columns)
+        assert set(test_daily_store_sales_with_exogenous.columns) != set(pd.DataFrame(test_daily_store_sales).columns)
 
-        assert set(train_product_sales_with_exog.columns) != set(pd.DataFrame(train_daily_product_sales).columns)
-        assert set(test_product_sales_with_exog.columns) != set(pd.DataFrame(test_daily_product_sales).columns)
-
+        assert set(train_product_sales_with_exogenous.columns) != set(pd.DataFrame(train_daily_product_sales).columns)
+        assert set(test_product_sales_with_exogenous.columns) != set(pd.DataFrame(test_daily_product_sales).columns)
     def test_handle_exogenous_scaling(self):
-        os.chdir("../")  # needs access to App Dir
 
-        # Mock data - dates are older due to exog data age
+        # Mock data - dates are older due to exogenous data age
         mock_data = pd.DataFrame(data=
         {
             "date": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-06", "2024-01-07",
@@ -460,32 +458,29 @@ class PreProcessingTests:
             train_daily_product_sales_handled_missing_values, test_daily_product_sales_handled_missing_values,
             column_mapping)
 
-        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
+        train_daily_store_sales_with_exogenous, test_daily_store_sales_with_exogenous, train_product_sales_with_exogenous, test_product_sales_with_exogenous = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
             "UK",
             train_daily_store_sales, test_daily_store_sales,
             train_daily_product_sales, test_daily_product_sales,
             column_mapping)
 
-        train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled = data_preprocessing_controller.handle_exogenous_scaling(
-            train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
-            test_product_sales_with_exog, column_mapping)
+        train_daily_store_sales_with_exogenous_scaled, test_daily_store_sales_with_exogenous_scaled, train_product_sales_with_exogenous_scaled, test_product_sales_with_exogenous_scaled = data_preprocessing_controller.handle_exogenous_scaling(
+            train_daily_store_sales_with_exogenous, test_daily_store_sales_with_exogenous, train_product_sales_with_exogenous,
+            test_product_sales_with_exogenous, column_mapping)
 
-        scaled_data = [train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
-                       train_product_sales_with_exog_scaled,
-                       test_product_sales_with_exog_scaled]
+        scaled_data = [train_daily_store_sales_with_exogenous_scaled, test_daily_store_sales_with_exogenous_scaled,
+                       train_product_sales_with_exogenous_scaled,
+                       test_product_sales_with_exogenous_scaled]
 
-        exog_columns = list(
-            train_daily_store_sales_with_exog_scaled.columns.difference(train_daily_store_sales.columns))
+        exogenous_columns = list(
+            train_daily_store_sales_with_exogenous_scaled.columns.difference(train_daily_store_sales.columns))
 
         for data in scaled_data:
-            for exog_column in exog_columns:
-                assert almost_equal_floats(np.mean(data[exog_column]),
-                                           0), f"Column: {exog_column} is not scaled correctly, the mean is not removed/0"
-
+            for exogenous_column in exogenous_columns:
+                assert almost_equal_floats(np.mean(data[exogenous_column]),
+                                           0), f"Column: {exogenous_column} is not scaled correctly, the mean is not removed/0"
     def test_handle_lag_features(self):
-        os.chdir("../")  # needs access to App Dir
-
-        # Mock data - dates are older due to exog data age
+        # Mock data - dates are older due to exogenous data age
         mock_data = pd.DataFrame(data=
         {
             "date": ["2024-01-01", "2024-01-02", "2024-01-03", "2024-01-04", "2024-01-05", "2024-01-06", "2024-01-07",
@@ -540,30 +535,26 @@ class PreProcessingTests:
             train_daily_product_sales_handled_missing_values, test_daily_product_sales_handled_missing_values,
             column_mapping)
 
-        train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
+        train_daily_store_sales_with_exogenous, test_daily_store_sales_with_exogenous, train_product_sales_with_exogenous, test_product_sales_with_exogenous = data_preprocessing_controller.handle_inclusion_of_exogenous_variables(
             "UK",
             train_daily_store_sales, test_daily_store_sales,
             train_daily_product_sales, test_daily_product_sales,
             column_mapping)
 
-        train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled = data_preprocessing_controller.handle_exogenous_scaling(
-            train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog,
-            test_product_sales_with_exog, column_mapping)
+        train_daily_store_sales_with_exogenous_scaled, test_daily_store_sales_with_exogenous_scaled, train_product_sales_with_exogenous_scaled, test_product_sales_with_exogenous_scaled = data_preprocessing_controller.handle_exogenous_scaling(
+            train_daily_store_sales_with_exogenous, test_daily_store_sales_with_exogenous, train_product_sales_with_exogenous,
+            test_product_sales_with_exogenous, column_mapping)
 
-        scaled_data = [train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
-                       train_product_sales_with_exog_scaled,
-                       test_product_sales_with_exog_scaled]
-
-        train_daily_store_sales_with_exog_scaled_lagged, test_daily_store_sales_with_exog_scaled_lagged, train_product_sales_with_exog_scaled_lagged, test_product_sales_with_exog_scaled_lagged = (
+        train_daily_store_sales_with_exogenous_scaled_lagged, test_daily_store_sales_with_exogenous_scaled_lagged, train_product_sales_with_exogenous_scaled_lagged, test_product_sales_with_exogenous_scaled_lagged = (
             data_preprocessing_controller.handle_lag_features(
-                train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled,
-                train_product_sales_with_exog_scaled,
-                test_product_sales_with_exog_scaled, column_mapping))
+                train_daily_store_sales_with_exogenous_scaled, test_daily_store_sales_with_exogenous_scaled,
+                train_product_sales_with_exogenous_scaled,
+                test_product_sales_with_exogenous_scaled, column_mapping))
 
-        lag_data = [train_daily_store_sales_with_exog_scaled_lagged,
-                    test_daily_store_sales_with_exog_scaled_lagged,
-                    train_product_sales_with_exog_scaled_lagged,
-                    test_product_sales_with_exog_scaled_lagged]
+        lag_data = [train_daily_store_sales_with_exogenous_scaled_lagged,
+                    test_daily_store_sales_with_exogenous_scaled_lagged,
+                    train_product_sales_with_exogenous_scaled_lagged,
+                    test_product_sales_with_exogenous_scaled_lagged]
         lag_columns = ["-1day", "-2day", "-3day"]
         for data in lag_data:
             for lag_column in lag_columns:
