@@ -1,3 +1,22 @@
+import pytest
+import time
+import os
+import subprocess
+
+@pytest.fixture(scope='session', autouse=True)
+def before_all():
+    """
+    This function runs before all tests
+    """
+    print("Starting FastAPI server...")
+    os.chdir("../")
+    subprocess.run(["bash", "start_fast_api.sh"])
+    time.sleep(3)  # delay to setup fast api
+    yield  # tests will run here
+    print("Stopping FastAPI server...")
+    subprocess.run(["pkill", "-f", "uvicorn"])
+
+
 class TestForecasting:
     """
     ENSURE FAST_API is Running
