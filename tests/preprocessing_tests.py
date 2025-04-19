@@ -9,33 +9,26 @@ from pydantic.v1.utils import almost_equal_floats
 
 from App.Controllers import data_preprocessing_controller
 
+
+@pytest.fixture(scope='session', autouse=True)
+def before_all():
+    """
+    This function runs before all tests
+    """
+    print("Starting FastAPI server...")
+    os.chdir("../")
+    subprocess.run(["bash", "start_fast_api.sh"])
+    time.sleep(3) # delay to setup fast api
+    yield  # tests will run here
+    print("Stopping FastAPI server...")
+    subprocess.run(["pkill", "-f", "uvicorn"])
+
+
 class TestPreProcessing:
     """
     Pre-Processing Tests
     ENSURE FAST_API is Running
     """
-
-    @pytest.fixture(scope='session', autouse=True)
-    def before_all(self):
-        """
-        This function runs before all tests
-        """
-        print("Starting FastAPI server...")
-        os.chdir("../") # sets to root dir to run fast api as well as for exogenous data
-        process = subprocess.Popen(
-            ["uvicorn", "App.utils.fastapi.main:app", "--port", "8000"],
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE
-        )
-
-        time.sleep(2)  # Give uvicorn time to start
-
-        yield  # tests will run here
-
-        print("Stopping FastAPI server...")
-        process.terminate()
-        process.wait()
-
 
     def test_handle_dictionary_conversion(self):
         """
@@ -356,7 +349,7 @@ class TestPreProcessing:
     def test_handle_inclusion_of_exogenous_variables(self):
         """
         Tests if Exogenous Variables are Included
-        Will not Work Without Changing Dir to "../", ideally run all and pytest fixture will redirect to root directory
+        Will not Work Without Changing Dir to "../", ideally run all tests as pytest fixture will change to the root directory
         """
 
         # Mock data - dates are older due to exogenous data age
