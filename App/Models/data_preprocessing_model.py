@@ -5,7 +5,7 @@ from sklearn.compose import ColumnTransformer
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
 from App.utils.session_manager import SessionManager
-from App.Models.data_handling_model import read_file
+from App.Models.data_model import read_file
 
 
 def convert_to_dict(data):
@@ -30,7 +30,7 @@ def transform_data(data, column_mapping):
     return data, is_log_transformed
 
 
-def handle_outliers(data, column_mapping):
+def clean_outliers(data, column_mapping):
     outlier_indices = []
     quantity_sold_column = column_mapping["quantity_sold_column"]
     product_column = column_mapping["product_column"]

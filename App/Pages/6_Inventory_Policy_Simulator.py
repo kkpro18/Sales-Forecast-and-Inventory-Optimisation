@@ -1,7 +1,7 @@
 import simpy
 import streamlit as st
 from App.utils.session_manager import SessionManager
-from App.Models import inventory_simulator_model
+from App.Models import inventory_policy_simulator_model
 from App.Controllers import inventory_policy_simulator_controller
 
 st.set_page_config(

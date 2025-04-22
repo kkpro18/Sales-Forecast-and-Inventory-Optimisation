@@ -25,7 +25,7 @@ def handle_outliers_api(received_data: InputData):
         data = pd.DataFrame(received_data.data)
         column_mapping = received_data.column_mapping
 
-        return data_preprocessing_model.convert_to_dict(data_preprocessing_model.handle_outliers(data, column_mapping))
+        return data_preprocessing_model.convert_to_dict(data_preprocessing_model.clean_outliers(data, column_mapping))
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 

@@ -16,13 +16,13 @@ product_name = st.text_input("Product Name")
 left, midleft, mid, midright, right = st.columns(5)
 if product_name:
     left.subheader(product_name)
-perishable = midleft.toggle("Perishable Product")
-if not perishable:
+seasonable = midleft.toggle("Seasonable Product")
+if not seasonable:
     eoq_input = optimise_inventory_policy_controller.handle_eoq_input()
     if eoq_input:
         eoq_optimal_order_quantity = optimise_inventory_policy_controller.handle_eoq_calculation(**eoq_input)
         st.write("The Optimal Order Quantity for this Product is: ", eoq_optimal_order_quantity)
-elif perishable:
+elif seasonable:
     newsvendor_input = optimise_inventory_policy_controller.handle_newsvendor_input()
     if newsvendor_input:
         newsvendor_optimal_order_quantity = optimise_inventory_policy_controller.handle_newsvendor_calculation(**newsvendor_input)

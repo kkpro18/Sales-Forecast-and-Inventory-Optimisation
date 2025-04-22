@@ -1,4 +1,4 @@
-from App.Models import inventory_simulator_model
+from App.Models import inventory_policy_simulator_model
 import streamlit as st
 def handle_input_details():
     try:

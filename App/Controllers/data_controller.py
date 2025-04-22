@@ -1,5 +1,5 @@
 import streamlit as st
-from App.Models.data_handling_model import read_uploaded_data, map_variables, select_region
+from App.Models.data_model import read_uploaded_data, map_variables, select_region
 from App.utils.session_manager import SessionManager
 
 
