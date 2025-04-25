@@ -80,20 +80,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/App/data/kaggle.com_datasets_shreyanshverma27_online-sales-dataset-popular-marketplace-data/Online Sales Data.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/kaggle.com_datasets_tanayatipre_store-sales-forecasting-dataset/stores_sales_forecasting.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
       </map>
     </option>
   </component>

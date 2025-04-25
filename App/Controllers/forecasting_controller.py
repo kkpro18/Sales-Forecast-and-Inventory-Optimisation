@@ -204,7 +204,6 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
     else:
         st.error(json_response.text)
 
-
 async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train, test, train_with_exog, test_with_exog, column_mapping, product_name=None):
     # predict fb_prophet without exog
     # fit model parallel

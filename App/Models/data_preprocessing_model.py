@@ -16,8 +16,6 @@ def convert_to_dict(data):
     # needs to handle symbols maybe
 
     return data.to_dict(orient='records')
-
-
 def transform_data(data, column_mapping):
     sales_column = column_mapping["quantity_sold_column"]
     if data[sales_column].skew() > 1:
@@ -28,8 +26,6 @@ def transform_data(data, column_mapping):
         st.success("Sales Column is not skewed, no transformation applied")
         is_log_transformed = False
     return data, is_log_transformed
-
-
 def clean_outliers(data, column_mapping):
     outlier_indices = []
     quantity_sold_column = column_mapping["quantity_sold_column"]
@@ -50,6 +46,7 @@ def clean_outliers(data, column_mapping):
             (product_group[quantity_sold_column] < quartile_1 - threshold * inter_quartile_range)
             |
             (product_group[quantity_sold_column] > quartile_3 + threshold * inter_quartile_range)].index
+
         # median absolute deviation to handle outliers
 
         median_sales = np.median(product_group[quantity_sold_column])
@@ -82,7 +79,6 @@ def clean_outliers(data, column_mapping):
         st.success(f"{outlier_values.shape[0]} outliers have been removed")
 
     return data
-
 
 def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping):
     date_column = column_mapping["date_column"]
@@ -140,10 +136,8 @@ def fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
     daily_product_sales = daily_product_sales.reset_index(drop=True)
 
     return daily_store_sales, daily_product_sales
-
-
 def split_training_testing_data(data, column_mapping):
-    # 70 : 30 split
+    # 80:20 split
     # convert date column to datetime
     date_column = column_mapping["date_column"]
     data[date_column] = pd.to_datetime(data[date_column], errors="coerce")
@@ -163,8 +157,6 @@ def split_training_testing_data(data, column_mapping):
         test = test[test[product_column].isin(train[product_column].unique())]
 
     return train, test
-
-
 def handle_missing_values(train, test, column_mapping):
     product_column = column_mapping["product_column"]
     price_column = column_mapping["price_column"]

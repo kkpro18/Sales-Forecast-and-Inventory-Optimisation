@@ -55,8 +55,6 @@ def store_sarima_model(received_data: InputData):
     finally:
         return {"sarima_model_path": sarima_model_path}
 def store_arimax_model(received_data: InputData):
-    # print(f"\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n{received_data.y_train}\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n")
-
     try:
         if not received_data.y_train or len(received_data.y_train) == 0 or not received_data.X_train or len(
                 received_data.X_train) == 0:

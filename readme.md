@@ -17,3 +17,31 @@ Develop Unit Test
 7. Integrate into an Application (User-Interface) [ ]
 8. Add Macro-Economic Variables [ ]
 9. Generate Insights [ ]
+
+## Project Architecture
+
+This project follows a Model-View-Controller (MVC) pattern:
+
+- **Models**: Contains the business logic and data handling
+- **Controllers**: Acts as intermediaries between models and views
+- **Pages**: Represents the user interface
+- **Utils**: Contains utility functions
+
+### UML Diagram
+
+A UML diagram of the project architecture is available in the `App` directory:
+
+- `App/uml_diagram.puml`: PlantUML file containing the UML diagram
+- `App/uml_diagram_readme.md`: README file explaining the UML diagram and how to view it
+- `App/generate_uml_diagram.sh`: Shell script to generate a PNG version of the UML diagram
+
+To generate a PNG version of the UML diagram, run:
+
+```bash
+chmod +x App/generate_uml_diagram.sh
+./App/generate_uml_diagram.sh
+```
+
+This will create `App/uml_diagram.png` which you can view with any image viewer.
+
+For more details about the project architecture, please refer to `App/uml_diagram_readme.md`.
