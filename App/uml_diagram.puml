@@ -1,0 +1,287 @@
+@startuml
+
+package "App" {
+  package "Models" {
+    class DataModel {
+      + read_uploaded_data(uploaded_dataset)
+      + map_variables(data)
+      + select_region()
+      + read_file(filepath)
+    }
+
+    class DataPreprocessingModel {
+      + convert_to_dict(data)
+      + transform_data(data, column_mapping)
+      + clean_outliers(data, column_mapping)
+      + fix_dates_and_split_into_product_sales_and_daily_sales(data, column_mapping)
+      + split_training_testing_data(data, column_mapping)
+      + handle_missing_values(train, test, column_mapping)
+      + format_dates(train, test, column_mapping)
+      + concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
+      + scale_exogenous_data(train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_product_sales_with_exog, test_product_sales_with_exog, column_mapping)
+      + add_lag_features(train_daily_store_sales_with_exog_scaled, test_daily_store_sales_with_exog_scaled, train_product_sales_with_exog_scaled, test_product_sales_with_exog_scaled, column_mapping)
+    }
+
+    class DataForecastingModel {
+      + get_seasonality()
+      + fit_arima_model(y_train)
+      + fit_sarima_model(y_train, seasonality)
+      + fit_arimax_model(X_exog, y_train)
+      + fit_sarimax_model(X_exog, y_train, seasonality)
+      + fit_fb_prophet_model(full_data, column_mapping)
+      + fit_fb_prophet_model_with_exog(full_data, column_mapping)
+      + fit_lstm_model()
+      + predict(model_path, forecast_periods, model_name, data)
+      + interpret_slope(date, y_test_prediction)
+      + mean_direction_accuracy(y_true, y_predicted)
+      + print_performance_metrics(y_train, y_train_prediction, y_test, y_test_prediction)
+      + plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction, column_mapping, multivariate)
+    }
+
+    class DataVisualisationModel {
+      + visualise_storewide_sales(data, column_mapping)
+      + visualise_individual_product_sales(product_groups, column_mapping)
+    }
+    class OptimiseInventoryPolicyModel {
+          + optimise_inventory_policy()
+    }
+
+    class InventoryPolicySimulatorModel {
+      + total_overstocking_cost: float
+      + total_understocking_cost: float
+      + total_restock_cost: float
+      + input_details()
+      + reset_simulation()
+      + update_log(message)
+      + customer_purchase(env, inventorySimulator)
+      + run_store(env, inventorySimulator)
+
+      class InventorySimulator {
+        - stock: int
+        - reorder_point: int
+        - max_inventory_level: int
+        - overstocking_cost: float
+        - understocking_cost: float
+        - restock_cost: float
+        - demand_per_period: float
+        - env: simpy.Environment
+        - inventory: simpy.Resource
+        + __init__(env, initial_stock, reorder_point, max_inventory_level, overstocking_cost, understocking_cost, restock_cost, demand_per_period)
+        + restock()
+        + place_order()
+        + inventory_triggers()
+      }
+    }
+  }
+
+  package "Controllers" {
+    class DataController {
+      + handle_uploaded_file(uploaded_dataset)
+      + handle_column_mapping(data)
+      + handle_region_selection()
+    }
+
+    class DataPreprocessingController {
+      + handle_dictionary_conversion(data)
+      + handle_data_transformation(data_as_dictionary, column_mapping)
+      + handle_outliers(data, column_mapping)
+      + handle_dates_and_split_product_and_overall_sales(data, column_mapping)
+      + handle_train_test_split(daily_store_sales, daily_product_sales, column_mapping)
+      + handle_missing_values(train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
+      + handle_date_formatting(train, test, column_mapping)
+      + handle_inclusion_of_exogenous_variables(selected_region, train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, column_mapping)
+      + handle_exogenous_scaling(train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog, column_mapping)
+      + handle_lag_features(train_daily_store_sales_with_exog, test_daily_store_sales_with_exog, train_daily_product_sales_with_exog, test_daily_product_sales_with_exog, column_mapping)
+    }
+
+    class ForecastingController {
+      + handle_store_sales_data(column_mapping)
+      + handle_product_sales_data(column_mapping)
+      + handle_seasonality_input()
+      + handle_arima_sarima_training_and_predictions(train, test, column_mapping, product_name)
+      + handle_arimax_sarimax_training_and_predictions(train, test, column_mapping, product_name)
+      + handle_fb_prophet_with_and_without_exog_training_and_predictions(train, test, train_with_exog, test_with_exog, column_mapping, product_name)
+    }
+
+    class DataVisualisationController {
+      + handle_store_wide_sales_visualisation(store_data, column_mapping)
+      + handle_product_level_sales_visualisation(product_data, column_mapping)
+    }
+
+    class InventoryPolicySimulatorController {
+      + handle_inventory_policy_simulation()
+    }
+
+    class OptimiseInventoryPolicyController {
+      + handle_eoq_input()
+      + handle_eoq_calculation(periodic_demand, order_cost, holding_cost)
+      + handle_newsvendor_input()
+      + handle_newsvendor_calculation(average_periodic_demand, std_deviation_demand, understocking_cost, overstocking_cost)
+    }
+  }
+
+  package "Pages" {
+    class HomePage {
+      + render()
+    }
+
+    class UploadDataPage {
+      + render()
+    }
+
+    class PreprocessDataPage {
+      + render()
+    }
+
+    class VisualiseDataPage {
+      + render()
+    }
+
+    class ForecastSalesPage {
+      + render()
+    }
+
+    class OptimiseInventoryPolicyPage {
+      + render()
+    }
+
+    class InventoryPolicySimulatorPage {
+      + render()
+    }
+
+    class ShareFeedbackPage {
+      + render()
+    }
+  }
+
+  package "utils" {
+    class SessionManager {
+      + set_state(key, value)
+      + get_state(key)
+      + clear_states()
+      + is_there(key)
+      + fast_api(endpoint, **kwargs)
+      + cleanup()
+    }
+
+    package "fastapi" {
+      class FastAPIMain {
+        + app: FastAPI
+        + executor: ProcessPoolExecutor
+      }
+
+      package "routers" {
+        class DataPreprocessingRouter {
+          + transform_data_api(received_data)
+          + handle_outliers_api(received_data)
+          + fix_dates_and_split_into_product_sales_and_daily_sales_api(received_data)
+          + train_test_split_api(received_data)
+          + handle_missing_values_api(received_data)
+        }
+
+        class DataForecastingRouter {
+          + store_arima_model(received_data)
+          + store_sarima_model(received_data)
+          + store_arimax_model(received_data)
+          + store_sarimax_model(received_data)
+          + store_fb_prophet_model_without_exog(received_data)
+          + store_fb_prophet_model_with_exog(received_data)
+          + fit_all_models_in_parallel_api(received_data)
+          + predict_train_test_api(received_data)
+        }
+      }
+
+      package "schemas" {
+        class InputDataModel {
+          + column_mapping: Optional[Dict[str, str]]
+          + data: Optional[List[Dict[str, Any]]]
+          + train: Optional[List[Dict[str, Any]]]
+          + test: Optional[List[Dict[str, Any]]]
+          + train_with_exog: Optional[List[Dict[str, Any]]]
+          + test_with_exog: Optional[List[Dict[str, Any]]]
+          + daily_store_sales: Optional[List[Dict[str, Any]]]
+          + daily_product_sales: Optional[List[Dict[str, Any]]]
+          + train_daily_store_sales: Optional[List[Dict[str, Any]]]
+          + test_daily_store_sales: Optional[List[Dict[str, Any]]]
+          + train_daily_product_sales: Optional[List[Dict[str, Any]]]
+          + test_daily_product_sales: Optional[List[Dict[str, Any]]]
+          + train_data: Optional[List[Dict[str, Any]]]
+          + test_data: Optional[List[Dict[str, Any]]]
+          + X_train: Optional[List[Dict[str, Any]]]
+          + X_test: Optional[List[Dict[str, Any]]]
+          + y_train: Optional[Dict[int, Any]]
+          + y_test: Optional[Dict[int, Any]]
+          + seasonality: Optional[conint(gt=0)]
+          + test_forecast_steps: Optional[conint(gt=0)]
+          + model_name: Optional[str]
+          + model_path: Optional[str]
+          + product_name: Optional[str]
+          + model_one: Optional[str]
+          + model_two: Optional[str]
+          + is_log_transformed: Optional[bool]
+        }
+      }
+    }
+}
+package "tests" {
+        class TestPreProcessing {
+          + test_handle_dictionary_conversion()
+          + test_handle_data_transformation()
+          + test_handle_outliers()
+          + test_handle_dates_and_split_product_and_overall_sales()
+          + test_handle_train_test_split()
+          + test_handle_missing_values()
+          + test_handle_date_formatting()
+          + test_handle_inclusion_of_exogenous_variables()
+          + test_handle_exogenous_scaling()
+          + test_handle_lag_features()
+        }
+
+        class TestForecasting {
+          + test_handle_store_sales_data()
+          + test_handle_product_sales_data()
+          + test_handle_seasonality_input()
+          + test_handle_arima_sarima_training_and_predictions()
+          + test_handle_arimax_sarimax_training_and_predictions()
+          + test_handle_fb_prophet_with_and_without_exog_training_and_predictions()
+        }
+      }
+
+' Relationships between components
+DataController --> DataModel
+DataPreprocessingController --> DataPreprocessingModel
+ForecastingController --> DataForecastingModel
+DataVisualisationController --> DataVisualisationModel
+InventoryPolicySimulatorController --> InventoryPolicySimulatorModel
+OptimiseInventoryPolicyController --> OptimiseInventoryPolicyModel
+
+HomePage --> SessionManager
+UploadDataPage --> DataController
+UploadDataPage --> SessionManager
+PreprocessDataPage --> DataPreprocessingController
+PreprocessDataPage --> SessionManager
+VisualiseDataPage --> DataVisualisationController
+VisualiseDataPage --> SessionManager
+ForecastSalesPage --> ForecastingController
+ForecastSalesPage --> SessionManager
+OptimiseInventoryPolicyPage --> OptimiseInventoryPolicyController
+OptimiseInventoryPolicyPage --> SessionManager
+InventoryPolicySimulatorPage --> InventoryPolicySimulatorController
+InventoryPolicySimulatorPage --> SessionManager
+ShareFeedbackPage --> SessionManager
+
+DataPreprocessingController --> SessionManager
+ForecastingController --> SessionManager
+
+SessionManager --> FastAPIMain
+FastAPIMain --> DataPreprocessingRouter
+FastAPIMain --> DataForecastingRouter
+DataPreprocessingRouter --> DataPreprocessingModel
+DataForecastingRouter --> DataForecastingModel
+DataPreprocessingRouter --> InputDataModel
+DataForecastingRouter --> InputDataModel
+
+TestPreProcessing --> DataPreprocessingController
+TestForecasting --> ForecastingController
+
+@enduml
