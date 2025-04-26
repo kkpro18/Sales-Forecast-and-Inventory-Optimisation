@@ -18,7 +18,7 @@ def before_all():
     print("Starting FastAPI server...")
     os.chdir("../")
     subprocess.run(["bash", "start_fast_api.sh"])
-    time.sleep(3) # delay to setup fast api
+    time.sleep(5) # delay to setup fast api, if SLOW PC then increase time, otherwise tests autofail
     yield  # tests will run here
     print("Stopping FastAPI server...")
     subprocess.run(["pkill", "-f", "uvicorn"])
@@ -62,8 +62,6 @@ class TestPreProcessing:
             "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 2300, 1000]
         })
 
-        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
-
         column_mapping = {
             "date_column": "date",
             "product_column": "product",
@@ -71,10 +69,12 @@ class TestPreProcessing:
             "quantity_sold_column": "quantity_sold"
         }
 
+        data_as_json = mock_data.to_dict(orient="records")
+
         transformed_data_response = data_preprocessing_controller.handle_data_transformation(data_as_json,
                                                                                              column_mapping).json()
         transformed_data = transformed_data_response["data"]
-        is_log_transformed = transformed_data_response["is_log_transformed"]
+        is_log_transformed = transformed_data_response["is_log_transformed"] # status of log transformation
 
         # Check if the data is transformed correctly
         assert transformed_data is not None, f"Data transformation returned {type(transformed_data)}"
@@ -91,10 +91,10 @@ class TestPreProcessing:
                      "2025-01-08", "2025-01-09", "2025-01-10"],
             "product": ["A", "B", "C", "A", "B", "C", "A", "B", "C", "A"],
             "price": [1.12, 2.24, 3.34, 2.35, 1.47, 1.21, 2.20, 5.42, 5.21, 7.83],
-            "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 20, 1000]
+            "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 20, 1000] # one outlier
         })
 
-        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
+        data_as_json = mock_data.to_dict(orient="records")
 
         column_mapping = {
             "date_column": "date",
@@ -115,10 +115,10 @@ class TestPreProcessing:
                      "2025-01-08", "2025-01-09", "2025-01-10"],
             "product": ["A", "B", "C", "A", "B", "C", "A", "B", "C", "A"],
             "price": [1.12, 2.24, 3.34, 2.35, 1.47, 1.21, 2.20, 5.42, 5.21, 7.83],
-            "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 2000, 1000]
+            "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 2000, 1000] # two outliers
         })
 
-        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
+        data_as_json = mock_data.to_dict(orient="records")
 
         column_mapping = {
             "date_column": "date",
@@ -146,7 +146,7 @@ class TestPreProcessing:
             "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 20, 1000]
         })
 
-        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
+        data_as_json = mock_data.to_dict(orient="records")
 
         column_mapping = {
             "date_column": "date",

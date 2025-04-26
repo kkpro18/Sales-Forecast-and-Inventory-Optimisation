@@ -13,7 +13,7 @@ total_understocking_cost = 0
 total_restock_cost = 0
 
 def input_details():
-    initial_stock = int(st.slider("The initial stock level: ", 10, 500, 25))
+    initial_stock = int(st.slider("The initial stock level: ", 0, 500, 25))
     reorder_point = int(st.slider("The reorder point: ", 5, 350, 25))
     max_inventory_level = int(st.slider("The max Inventory level: ", 20, 650, 25))
     overstocking_cost = float(st.slider("The overstock cost per unit: ", 1, 350, 1))
