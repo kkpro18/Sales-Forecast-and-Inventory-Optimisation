@@ -111,7 +111,6 @@ def handle_inclusion_of_exogenous_variables(selected_region, train_daily_store_s
         data = concatenate_exogenous_data(selected_region, train_daily_store_sales, test_daily_store_sales,
                                           train_daily_product_sales, test_daily_product_sales, column_mapping)
     except Exception as e:
-        error = os.getcwd()
         st.error(e)
         return None
     else:

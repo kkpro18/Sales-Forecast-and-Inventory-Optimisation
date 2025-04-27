@@ -4,6 +4,7 @@ import os
 import subprocess
 from pydantic.v1.utils import almost_equal_floats
 import pandas as pd
+import asyncio
 from App.Models import data_model
 from App.Controllers import data_preprocessing_controller, forecasting_controller
 
@@ -107,9 +108,16 @@ class TestForecasting:
                 train_daily_store_sales,
                 test_daily_store_sales,
                 column_mapping,
+                seasonality=7
             )
         )
 
+        models_in_dir = os.listdir("models"))
+        for models in models_in_dir:
+            arima_presence = any(models.startswith(('arima_')))
+            sarima_presence = any(models.startswith(('sarima_')))
+
+        assert arima_presence and sarima_presence
 
     def test_handle_arimax_sarimax_training_and_predictions(self):
         self.fail()

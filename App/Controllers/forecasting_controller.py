@@ -65,7 +65,7 @@ def handle_seasonality_input():
         return seasonality
 
 
-async def handle_arima_sarima_training_and_predictions(train, test, column_mapping, product_name=None):
+async def handle_arima_sarima_training_and_predictions(train, test, column_mapping, product_name=None, seasonality=None):
     """
     Trains Arima, Sarima
     Generates Predictions
@@ -77,10 +77,13 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
         features = column_mapping["date_column"]
         target = column_mapping["quantity_sold_column"]
 
+        if seasonality is None:
+            seasonality = SessionManager.get_state('selected_seasonality')
+
         X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
         json_response = SessionManager.fast_api("fit_all_models_in_parallel_api", model_one="arima", model_two="sarima",
                                                 y_train=y_train.to_dict(),
-                                                seasonality=SessionManager.get_state('selected_seasonality'),
+                                                seasonality=seasonality,
                                                 product_name=product_name)
         if json_response.status_code == 200:
 
