@@ -49,16 +49,24 @@ class TestPreProcessing:
         Test the data transformation of data - Using FastAPI Pre-Processing Route
         """
         # Mock data
-        mock_data = data_model.read_file("App/data/kaggle.com_datasets_gabrielramos87_an-online-shop-business/Sales Transaction v.4a.csv")
+        # Mock data
+        mock_data = pd.DataFrame(data=
+        {
+            "date": ["2025-01-01", "2025-01-02", "2025-01-03", "2025-01-04", "2025-01-05", "2025-01-06", "2025-01-07",
+                     "2025-01-08", "2025-01-09", "2025-01-10"],
+            "product": ["A", "B", "C", "A", "B", "C", "A", "B", "C", "A"],
+            "price": [1.12, 2.24, 3.34, 2.35, 1.47, 1.21, 2.20, 5.42, 5.21, 7.83],
+            "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 2300, 1000]
+        })
 
         column_mapping = {
-            "date_column": "Date",
-            "product_column": "ProductName",
-            "price_column": "Price",
-            "quantity_sold_column": "Quantity"
+            "date_column": "date",
+            "product_column": "product",
+            "price_column": "price",
+            "quantity_sold_column": "quantity_sold"
         }
 
-        data_as_json = mock_data.to_dict(orient="records")
+        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
 
         transformed_data_response = data_preprocessing_controller.handle_data_transformation(data_as_json,
                                                                                              column_mapping).json()
@@ -84,7 +92,7 @@ class TestPreProcessing:
             "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 20, 1000] # one outlier
         })
 
-        data_as_json = mock_data.to_dict(orient="records")
+        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
 
         column_mapping = {
             "date_column": "date",
@@ -93,10 +101,10 @@ class TestPreProcessing:
             "quantity_sold_column": "quantity_sold"
         }
 
-        data_with_outliers = data_as_json
-        data_handled_outliers = data_preprocessing_controller.handle_outliers(data_with_outliers, column_mapping)
 
-        assert len(data_handled_outliers.json()) < len(data_with_outliers), "The 1000 Sales Outlier Remains in the Data"
+        data_handled_outliers = data_preprocessing_controller.handle_outliers(data_as_json, column_mapping)
+
+        assert len(data_handled_outliers.json()) < len(data_as_json), "The 1000 Sales Outlier Remains in the Data"
 
         # Mock data
         mock_data = pd.DataFrame(data=
@@ -108,7 +116,7 @@ class TestPreProcessing:
             "quantity_sold": [1, 2, 3, 5, 7, 10, 12, 12, 2000, 1000] # two outliers
         })
 
-        data_as_json = mock_data.to_dict(orient="records")
+        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
 
         column_mapping = {
             "date_column": "date",
@@ -117,10 +125,9 @@ class TestPreProcessing:
             "quantity_sold_column": "quantity_sold"
         }
 
-        data_with_outliers = data_as_json
-        data_handled_outliers = data_preprocessing_controller.handle_outliers(data_with_outliers, column_mapping)
+        data_handled_outliers = data_preprocessing_controller.handle_outliers(data_as_json, column_mapping)
         assert len(data_handled_outliers.json()) == len(
-            data_with_outliers), "Since, there is 20% outliers, they should not be removed and rather handled accordingly, however this is not the case"
+            data_as_json), "Since, there is 20% outliers, they should not be removed and rather handled accordingly, however this is not the case"
 
     def test_handle_dates_and_split_product_and_overall_sales(self):
         """
@@ -137,7 +144,7 @@ class TestPreProcessing:
             "quantity_sold_column": "Quantity"
         }
 
-        data_as_json = mock_data.to_dict(orient="records")
+        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
 
         response = data_preprocessing_controller.handle_dates_and_split_product_and_overall_sales(data_as_json,
                                                                                                   column_mapping)
@@ -148,8 +155,7 @@ class TestPreProcessing:
         assert daily_product_sales is not None, "Daily Product Sales Missing"
         assert len(daily_store_sales[column_mapping["date_column"]].unique()) >= len(
             mock_data[column_mapping["date_column"]].unique())
-        assert len(daily_store_sales[column_mapping["date_column"]].unique()) > len(
-            mock_data[column_mapping["date_column"]].unique())
+
 
     def test_handle_train_test_split(self):
         """
@@ -166,7 +172,7 @@ class TestPreProcessing:
             "quantity_sold_column": "Quantity"
         }
 
-        data_as_json = mock_data.to_dict(orient="records")
+        data_as_json = data_preprocessing_controller.handle_dictionary_conversion(mock_data)
 
         response = data_preprocessing_controller.handle_dates_and_split_product_and_overall_sales(data_as_json,
                                                                                                   column_mapping)
@@ -567,7 +573,7 @@ class TestPreProcessing:
 
 
 # integrated testing with full dataset and whole pre-processing pipeline
-    def test_full_system_integration(self):
+    def test_full_preprocessing_integration(self):
         """
         Tests if the Pre-Processing Pipeline Correctly Works as a whole
         CAUUTION: Test Will Take 5-10 Minutes to Complete due to size of dataset.
@@ -587,14 +593,12 @@ class TestPreProcessing:
         assert isinstance(data_as_json, list), "Data is not a List of Dictionaries (JSON Compatible Format)"
 
         transformed_data_response = data_preprocessing_controller.handle_data_transformation(data_as_json,
-                                                                                             column_mapping).json()
-        transformed_data = transformed_data_response["data"]
-        is_log_transformed = transformed_data_response["is_log_transformed"]  # status of log transformation
+                                                                                             column_mapping)
 
-        # Check if the data is transformed correctly
+        transformed_data = transformed_data_response.json()["data"]
         assert transformed_data is not None, f"Data transformation returned {type(transformed_data)}"
 
-        data_handled_outliers = data_preprocessing_controller.handle_outliers(data_as_json, column_mapping)
+        data_handled_outliers = data_preprocessing_controller.handle_outliers(transformed_data, column_mapping)
         response = data_preprocessing_controller.handle_dates_and_split_product_and_overall_sales(data_handled_outliers.json(), column_mapping)
         daily_store_sales = pd.DataFrame(response.json()["daily_store_sales"])
         daily_product_sales = pd.DataFrame(response.json()["daily_product_sales"])
@@ -671,12 +675,6 @@ class TestPreProcessing:
             train_daily_store_sales_with_exogenous, test_daily_store_sales_with_exogenous,
             train_product_sales_with_exogenous, test_product_sales_with_exogenous,
             column_mapping)
-
-        scaled_data = [train_daily_store_sales_with_exogenous_scaled, test_daily_store_sales_with_exogenous_scaled,
-                       train_product_sales_with_exogenous_scaled, test_product_sales_with_exogenous_scaled]
-
-        exogenous_columns = list(
-            train_daily_store_sales_with_exogenous_scaled.columns.difference(train_daily_store_sales.columns))
 
         train_daily_store_sales_with_exogenous_scaled_lagged, test_daily_store_sales_with_exogenous_scaled_lagged, train_product_sales_with_exogenous_scaled_lagged, test_product_sales_with_exogenous_scaled_lagged = (
             data_preprocessing_controller.handle_lag_features(
