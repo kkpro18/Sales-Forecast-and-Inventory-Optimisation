@@ -103,7 +103,8 @@ else:
                         forecasting_controller.handle_arimax_sarimax_training_and_predictions(
                             train_product_data_with_exog, test_product_data_with_exog,
                             column_mapping,
-                            product_name=product_name
+                            product_name=product_name,
+
                         )
                     )
                     asyncio.run(

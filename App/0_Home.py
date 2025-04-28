@@ -15,17 +15,28 @@ st.write("# Sales Forecasting App ")
 
 st.markdown(
     """
-    This Application allows you to forecast sales for your ecommerce store by letting you upload your sales data and train a Machine Learning Model, allowing you to find out the expected demand. 
+    This Application allows you to forecast sales and optimise inventory policies for your eCommerce store. Get Started by uploading your sales data!
 
-    Features:
-    - Predict sales at a higher precision through the use of 4 different Machine Learning Models (Time Series).
-    - Simulate Inventory Policies
+    Functionality Included in this Application are:
+    - 🤖 Autonomous Data Preprocessing Pipeline
+    - 📊 Visualise Sales Data for Store Sales and Product Sales
+    - 📈 Forecast Sales using Time Series Models like ARIMA, ARIMAX, SARIMA, SARIMAX and Prophet
+    - 💾 Export Trained Models for later use
+    - ➕ Calculate Optimal Inventory Policy for Seasonable and Non Seasonal Items using proprietary Mathematical Models
+    - 🎮 Simulate Inventory Policies
+    
+    Key Design Features 🌟:
+    - 🏗️ This Application is developed using the MVC Architecture
+    - 🌐 This Application leverages Streamlit framework for the user-interface
+    - ⚡ This Application leverages FastAPI framework to handle the PreProcessing and Forecasting computation.
+    
 
     How to use this Application? (👈 Use the Sidebar to navigate this application)
     1. Upload a dataset 📁| CSV / XLSX Format | Required Data Columns : Invoice Date, Product ID, Unit Price, # Sold
     2. Preprocess Data 🧼
     3. Visualise Data 🔎
     3. Forecast Sales 📈
+    4. Optimise Inventory Policies 🔧
     4. Inventory Policy Simulator ⚙️
     5. Share Feedback 💬
     """
@@ -34,7 +45,7 @@ st.markdown(
 if not SessionManager.is_there("preprocess_data_complete"):
     SessionManager.set_state("preprocess_data_complete", False)
 
-st.write("Full Session State Variables: ")
+st.write("Your Data: ")
 st.write(st.session_state)
 
 st.page_link("pages/1_Upload_Data.py", label="👈 First Upload Sales Data", icon="📁")

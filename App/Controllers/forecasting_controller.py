@@ -16,6 +16,7 @@ def handle_store_sales_data(column_mapping):
     train_daily_store_sales_with_exog[date_column] = train_daily_store_sales_with_exog[date_column].astype(str)
 
     test_daily_store_sales_with_exog = SessionManager.get_state("test_daily_store_sales_with_exog")
+    test_daily_store_sales_with_exog[date_column] = test_daily_store_sales_with_exog[date_column].astype(str)
 
     return train_daily_store_sales, test_daily_store_sales, train_daily_store_sales_with_exog, test_daily_store_sales_with_exog
 
@@ -137,79 +138,85 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
-async def handle_arimax_sarimax_training_and_predictions(train, test, column_mapping, product_name=None, seasonality=None, is_log_transformed=None):
-    features = train.columns.tolist()
-    features.remove(column_mapping["quantity_sold_column"])
-    features.remove(column_mapping["date_column"])
-    exog_features = features
+async def handle_arimax_sarimax_training_and_predictions(train, test, column_mapping, product_name=None, is_log_transformed=None,
+                                                         seasonality=None):
+    try:
+        features = train.columns.tolist()
+        features.remove(column_mapping["quantity_sold_column"])
+        features.remove(column_mapping["date_column"])
+        exog_features = features
 
-    date_column = column_mapping["date_column"]
-    target = column_mapping["quantity_sold_column"]
+        date_column = column_mapping["date_column"]
+        target = column_mapping["quantity_sold_column"]
 
-    X_train_exog, X_test_exog, X_train, X_test, y_train, y_test = train[exog_features], test[exog_features], train[
-        date_column], test[date_column], train[target], test[target]
-    if seasonality is None:
-        SessionManager.get_state('selected_seasonality')
-    if is_log_transformed is None:
-        is_log_transformed = SessionManager.get_state("is_log_transformed")
-    json_response = SessionManager.fast_api("fit_all_models_in_parallel_api",
-                                            y_train=y_train.to_dict(),
-                                            X_train=X_train_exog.to_dict(orient='records'),
-                                            seasonality=seasonality,
-                                            product_name=product_name,
-                                            model_one="arimax", model_two="sarimax",
-                                            column_mapping=column_mapping)
-
-    if json_response.status_code == 200:
-
-        arimax_model_path = json_response.json()["arimax"]["arimax_model_path"]
-        sarimax_model_path = json_response.json()["sarimax"]["sarimax_model_path"]
-
-        # Predict ARIMAX
-        json_response = SessionManager.fast_api("predict_train_test_api",
-                                                model_path=arimax_model_path,
-                                                model_name="arimax",
-                                                test_forecast_steps=len(X_test_exog),
+        X_train_exog, X_test_exog, X_train, X_test, y_train, y_test = train[exog_features], test[exog_features], train[
+            date_column], test[date_column], train[target], test[target]
+        if seasonality is None:
+            seasonality = SessionManager.get_state('selected_seasonality')
+        if is_log_transformed is None:
+            is_log_transformed = SessionManager.get_state("is_log_transformed")
+        json_response = SessionManager.fast_api("fit_all_models_in_parallel_api",
+                                                y_train=y_train.to_dict(),
                                                 X_train=X_train_exog.to_dict(orient='records'),
-                                                X_test=X_test_exog.to_dict(orient='records'),
-                                                column_mapping=column_mapping,
-                                                is_log_transformed=is_log_transformed)
+                                                seasonality=seasonality,
+                                                product_name=product_name,
+                                                model_one="arimax", model_two="sarimax",
+                                                column_mapping=column_mapping)
 
         if json_response.status_code == 200:
-            y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction_arimax = pd.Series(json_response.json()["y_test_prediction"])
 
-            st.markdown("### ARIMAX Model:")
-            data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_arimax)
-            data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_arimax, y_test, y_test_prediction_arimax)
-            data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax, column_mapping)
+            arimax_model_path = json_response.json()["arimax"]["arimax_model_path"]
+            sarimax_model_path = json_response.json()["sarimax"]["sarimax_model_path"]
+
+            # Predict ARIMAX
+            json_response = SessionManager.fast_api("predict_train_test_api",
+                                                    model_path=arimax_model_path,
+                                                    model_name="arimax",
+                                                    test_forecast_steps=len(X_test_exog),
+                                                    X_train=X_train_exog.to_dict(orient='records'),
+                                                    X_test=X_test_exog.to_dict(orient='records'),
+                                                    column_mapping=column_mapping,
+                                                    is_log_transformed=is_log_transformed)
+
+            if json_response.status_code == 200:
+                y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
+                y_test_prediction_arimax = pd.Series(json_response.json()["y_test_prediction"])
+
+                st.markdown("### ARIMAX Model:")
+                data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_arimax)
+                data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_arimax, y_test,
+                                                                 y_test_prediction_arimax)
+                data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax,
+                                                       column_mapping)
+            else:
+                st.error(json_response.text)
+
+            # Predict SARIMAX
+            json_response = SessionManager.fast_api("predict_train_test_api",
+                                                    test_forecast_steps=len(X_test_exog),
+                                                    model_path=sarimax_model_path,
+                                                    model_name="sarimax",
+                                                    X_train=X_train_exog.to_dict(orient='records'),
+                                                    X_test=X_test_exog.to_dict(orient='records'),
+                                                    column_mapping=column_mapping,
+                                                    is_log_transformed=is_log_transformed)
+
+            if json_response.status_code == 200:
+                y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
+                y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
+
+                st.markdown("### SARIMAX Model:")
+                data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_sarimax)
+                data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_sarimax, y_test,
+                                                                 y_test_prediction_sarimax)
+                data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarimax,
+                                                       column_mapping)
+            else:
+                st.error(json_response.text)
         else:
             st.error(json_response.text)
-
-        # Predict SARIMAX
-        json_response = SessionManager.fast_api("predict_train_test_api",
-                                                test_forecast_steps=len(X_test_exog),
-                                                model_path=sarimax_model_path,
-                                                model_name="sarimax",
-                                                X_train=X_train_exog.to_dict(orient='records'),
-                                                X_test=X_test_exog.to_dict(orient='records'),
-                                                column_mapping=column_mapping,
-                                                is_log_transformed=is_log_transformed)
-
-        if json_response.status_code == 200:
-            y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
-            y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
-
-            st.markdown("### SARIMAX Model:")
-            data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_sarimax)
-            data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_sarimax, y_test,
-                                                             y_test_prediction_sarimax)
-            data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_sarimax, column_mapping)
-        else:
-            st.error(json_response.text)
-    else:
-        st.error(json_response.text)
-
+    except Exception as e:
+        st.error(f"An error occurred: {e}")
 async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train, test, train_with_exog, test_with_exog, column_mapping, product_name=None,
                                                                            is_log_transformed=None):
     # fit model parallel
