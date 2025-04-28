@@ -1,9 +1,9 @@
+import shutil
+
 import pytest
 import time
 import os
 import subprocess
-from pydantic.v1.utils import almost_equal_floats
-import pandas as pd
 import asyncio
 from App.Models import data_model
 from App.Controllers import data_preprocessing_controller, forecasting_controller
@@ -17,10 +17,26 @@ def before_all():
     print("Starting FastAPI server...")
     os.chdir("../")
     subprocess.run(["bash", "start_fast_api.sh"])
+    if os.path.exists("models"):
+        shutil.rmtree("models")
+    os.mkdir("models")
     time.sleep(3)  # delay to setup fast api
     yield  # tests will run here
     print("Stopping FastAPI server...")
     subprocess.run(["pkill", "-f", "uvicorn"])
+
+
+@pytest.fixture(scope='function', autouse=True)
+def cleanup():
+    """
+    This function runs after each test, removing models created
+    """
+    yield
+    print("Cleaning up models...")
+    if os.path.exists("models"):
+        shutil.rmtree("models")
+    os.mkdir("models")
+
 
 def preprocessing_pipeline(path=None,
                            column_mapping=None):
@@ -93,9 +109,84 @@ def preprocessing_pipeline(path=None,
 class TestForecasting:
     """
     ENSURE FAST_API is Running
-    Forecasting Controller Tests
+    Forecasting Tests
     """
-    def test_handle_arima_sarima_training_and_predictions(self):
+    def test_handle_arima_sarima_training(self):
+        train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, train_daily_store_sales_with_exogenous_scaled_lagged, test_daily_store_sales_with_exogenous_scaled_lagged, train_product_sales_with_exogenous_scaled_lagged, test_product_sales_with_exogenous_scaled_lagged = preprocessing_pipeline()
+
+        column_mapping = {
+            "date_column": "Date",
+            "product_column": "ProductName",
+            "price_column": "Price",
+            "quantity_sold_column": "Quantity"
+        }
+
+        date_column = column_mapping["date_column"]
+
+        train_daily_store_sales[date_column] = train_daily_store_sales[date_column].astype(str)  # for json formatting as currently in pd DateTime format
+        test_daily_store_sales[date_column] = test_daily_store_sales[date_column].astype(str)
+
+
+        asyncio.run(
+            forecasting_controller.handle_arima_sarima_training_and_predictions(
+                train_daily_store_sales,
+                test_daily_store_sales,
+                column_mapping,
+                seasonality=7,
+                is_log_transformed=True
+            )
+        )
+
+        models_in_dir = os.listdir("models")
+        arima_presence = False
+        sarima_presence = False
+        for model_name in models_in_dir:
+            if not arima_presence:
+                arima_presence = model_name.startswith('arima_')
+            if not sarima_presence:
+                sarima_presence = model_name.startswith('sarima_')
+
+        assert (arima_presence and sarima_presence), "One or both models not present"
+
+    def test_handle_arimax_sarimax_training(self):
+        train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, train_daily_store_sales_with_exogenous_scaled_lagged, test_daily_store_sales_with_exogenous_scaled_lagged, train_product_sales_with_exogenous_scaled_lagged, test_product_sales_with_exogenous_scaled_lagged = preprocessing_pipeline()
+
+        column_mapping = {
+            "date_column": "Date",
+            "product_column": "ProductName",
+            "price_column": "Price",
+            "quantity_sold_column": "Quantity"
+        }
+        date_column = column_mapping["date_column"]
+
+        train_daily_store_sales[date_column] = train_daily_store_sales[date_column].astype(str)  # for json formatting as currently in pd DateTime format
+        test_daily_store_sales[date_column] = test_daily_store_sales[date_column].astype(str)
+        train_daily_store_sales_with_exogenous_scaled_lagged[date_column] = train_daily_store_sales_with_exogenous_scaled_lagged[date_column].astype(str)
+        test_daily_store_sales_with_exogenous_scaled_lagged[date_column] = test_daily_store_sales_with_exogenous_scaled_lagged[date_column].astype(str)
+
+        asyncio.run(
+            forecasting_controller.handle_arimax_sarimax_training_and_predictions(
+                train_daily_store_sales_with_exogenous_scaled_lagged,
+                test_daily_store_sales_with_exogenous_scaled_lagged,
+                column_mapping,
+                seasonality=7,
+                is_log_transformed=True
+            )
+        )
+
+        models_in_dir = os.listdir("models")
+        arimax_presence = False
+        sarimax_presence = False
+
+        for model_name in models_in_dir:
+            if not arimax_presence:
+                arimax_presence = model_name.startswith('arimax_')
+            if not sarimax_presence:
+                sarimax_presence = model_name.startswith('sarimax_')
+
+        assert (arimax_presence and sarimax_presence), "One or both models not present"
+
+    def test_handle_fb_prophet_with_and_without_exog_training(self):
         train_daily_store_sales, test_daily_store_sales, train_daily_product_sales, test_daily_product_sales, train_daily_store_sales_with_exogenous_scaled_lagged, test_daily_store_sales_with_exogenous_scaled_lagged, train_product_sales_with_exogenous_scaled_lagged, test_product_sales_with_exogenous_scaled_lagged = preprocessing_pipeline()
         column_mapping = {
             "date_column": "Date",
@@ -103,24 +194,31 @@ class TestForecasting:
             "price_column": "Price",
             "quantity_sold_column": "Quantity"
         }
+        date_column = column_mapping["date_column"]
+
+        train_daily_store_sales[date_column] = train_daily_store_sales[date_column].astype(str)  # for json formatting as currently in pd DateTime format
+        test_daily_store_sales[date_column] = test_daily_store_sales[date_column].astype(str)
+        train_daily_store_sales_with_exogenous_scaled_lagged[date_column] = \
+        train_daily_store_sales_with_exogenous_scaled_lagged[date_column].astype(str)
+        test_daily_store_sales_with_exogenous_scaled_lagged[date_column] = \
+        test_daily_store_sales_with_exogenous_scaled_lagged[date_column].astype(str)
+
         asyncio.run(
-            forecasting_controller.handle_arima_sarima_training_and_predictions(
-                train_daily_store_sales,
-                test_daily_store_sales,
+            forecasting_controller.handle_fb_prophet_with_and_without_exog_training_and_predictions(
+                train_daily_store_sales, test_daily_store_sales,
+                train_daily_store_sales_with_exogenous_scaled_lagged, test_daily_store_sales_with_exogenous_scaled_lagged,
                 column_mapping,
-                seasonality=7
+                is_log_transformed=True
             )
         )
 
-        models_in_dir = os.listdir("models"))
-        for models in models_in_dir:
-            arima_presence = any(models.startswith(('arima_')))
-            sarima_presence = any(models.startswith(('sarima_')))
+        models_in_dir = os.listdir("models")
+        prophet_presence = False
+        prophet_with_exog_presence = False
+        for model_name in models_in_dir:
+            if not prophet_presence:
+                prophet_presence = model_name.startswith('prophet_')
+            if not prophet_with_exog_presence:
+                prophet_with_exog_presence = model_name.startswith('prophet_with_exog_')
 
-        assert arima_presence and sarima_presence
-
-    def test_handle_arimax_sarimax_training_and_predictions(self):
-        self.fail()
-
-    def test_handle_fb_prophet_with_and_without_exog_training_and_predictions(self):
-        self.fail()
+        assert (prophet_presence and prophet_with_exog_presence), "One or both models not present"

@@ -16,7 +16,6 @@ def handle_store_sales_data(column_mapping):
     train_daily_store_sales_with_exog[date_column] = train_daily_store_sales_with_exog[date_column].astype(str)
 
     test_daily_store_sales_with_exog = SessionManager.get_state("test_daily_store_sales_with_exog")
-    test_daily_store_sales_with_exog[date_column] = test_daily_store_sales_with_exog[date_column].astype(str)
 
     return train_daily_store_sales, test_daily_store_sales, train_daily_store_sales_with_exog, test_daily_store_sales_with_exog
 
@@ -65,7 +64,8 @@ def handle_seasonality_input():
         return seasonality
 
 
-async def handle_arima_sarima_training_and_predictions(train, test, column_mapping, product_name=None, seasonality=None):
+async def handle_arima_sarima_training_and_predictions(train, test, column_mapping, product_name=None, seasonality=None,
+                                                       is_log_transformed=None):
     """
     Trains Arima, Sarima
     Generates Predictions
@@ -79,6 +79,8 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
 
         if seasonality is None:
             seasonality = SessionManager.get_state('selected_seasonality')
+        if is_log_transformed is None:
+            is_log_transformed = SessionManager.get_state("is_log_transformed")
 
         X_train, X_test, y_train, y_test = train[features], test[features], train[target], test[target]
         json_response = SessionManager.fast_api("fit_all_models_in_parallel_api", model_one="arima", model_two="sarima",
@@ -92,7 +94,8 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
 
             # Predict ARIMA
             json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
-                                                    model_path=arima_model_path, model_name="arima")
+                                                    model_path=arima_model_path, model_name="arima",
+                                                    is_log_transformed=is_log_transformed)
             if json_response.status_code == 200:
                 y_train_prediction_arima = pd.Series(json_response.json()["y_train_prediction"])
                 y_test_prediction_arima = pd.Series(json_response.json()["y_test_prediction"])
@@ -112,7 +115,7 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
             # Predict SARIMA
             json_response = SessionManager.fast_api("predict_train_test_api", test_forecast_steps=len(X_test),
                                                     model_path=sarima_model_path, model_name="sarima",
-                                                    is_log_transformed=SessionManager.get_state("is_log_transformed"))
+                                                    is_log_transformed=is_log_transformed)
 
             if json_response.status_code == 200:
                 y_train_prediction_sarima = pd.Series(json_response.json()["y_train_prediction"])
@@ -134,7 +137,7 @@ async def handle_arima_sarima_training_and_predictions(train, test, column_mappi
     except Exception as e:
         st.error(f"An error occurred: {e}")
 
-async def handle_arimax_sarimax_training_and_predictions(train, test, column_mapping, product_name=None):
+async def handle_arimax_sarimax_training_and_predictions(train, test, column_mapping, product_name=None, seasonality=None, is_log_transformed=None):
     features = train.columns.tolist()
     features.remove(column_mapping["quantity_sold_column"])
     features.remove(column_mapping["date_column"])
@@ -145,11 +148,14 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
 
     X_train_exog, X_test_exog, X_train, X_test, y_train, y_test = train[exog_features], test[exog_features], train[
         date_column], test[date_column], train[target], test[target]
-
+    if seasonality is None:
+        SessionManager.get_state('selected_seasonality')
+    if is_log_transformed is None:
+        is_log_transformed = SessionManager.get_state("is_log_transformed")
     json_response = SessionManager.fast_api("fit_all_models_in_parallel_api",
                                             y_train=y_train.to_dict(),
                                             X_train=X_train_exog.to_dict(orient='records'),
-                                            seasonality=SessionManager.get_state('selected_seasonality'),
+                                            seasonality=seasonality,
                                             product_name=product_name,
                                             model_one="arimax", model_two="sarimax",
                                             column_mapping=column_mapping)
@@ -167,15 +173,13 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
                                                 X_train=X_train_exog.to_dict(orient='records'),
                                                 X_test=X_test_exog.to_dict(orient='records'),
                                                 column_mapping=column_mapping,
-                                                is_log_transformed=SessionManager.get_state("is_log_transformed"))
+                                                is_log_transformed=is_log_transformed)
 
         if json_response.status_code == 200:
             y_train_prediction_arimax = pd.Series(json_response.json()["y_train_prediction"])
             y_test_prediction_arimax = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### ARIMAX Model:")
-            # st.write(joblib.load(arimax_model_path).summary())
-            # st.write(joblib.load(arimax_model_path).get_params())
             data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_arimax)
             data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_arimax, y_test, y_test_prediction_arimax)
             data_forecasting_model.plot_prediction(X_train, y_train, X_test, y_test, y_test_prediction_arimax, column_mapping)
@@ -189,15 +193,14 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
                                                 model_name="sarimax",
                                                 X_train=X_train_exog.to_dict(orient='records'),
                                                 X_test=X_test_exog.to_dict(orient='records'),
-                                                column_mapping=column_mapping)
+                                                column_mapping=column_mapping,
+                                                is_log_transformed=is_log_transformed)
 
         if json_response.status_code == 200:
             y_train_prediction_sarimax = pd.Series(json_response.json()["y_train_prediction"])
             y_test_prediction_sarimax = pd.Series(json_response.json()["y_test_prediction"])
 
             st.markdown("### SARIMAX Model:")
-            # st.write(joblib.load(sarimax_model_path).summary())
-            # st.write(joblib.load(sarimax_model_path).get_params())
             data_forecasting_model.interpret_slope(test[column_mapping["date_column"]], y_test_prediction_sarimax)
             data_forecasting_model.print_performance_metrics(y_train, y_train_prediction_sarimax, y_test,
                                                              y_test_prediction_sarimax)
@@ -207,9 +210,11 @@ async def handle_arimax_sarimax_training_and_predictions(train, test, column_map
     else:
         st.error(json_response.text)
 
-async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train, test, train_with_exog, test_with_exog, column_mapping, product_name=None):
-    # predict fb_prophet without exog
+async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train, test, train_with_exog, test_with_exog, column_mapping, product_name=None,
+                                                                           is_log_transformed=None):
     # fit model parallel
+    if is_log_transformed is None:
+        is_log_transformed = SessionManager.get_state("is_log_transformed")
     json_response = SessionManager.fast_api("fit_all_models_in_parallel_api",
                                             model_one="fb_prophet_without_exog",
                                             model_two="fb_prophet_with_exog",
@@ -226,7 +231,7 @@ async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train
                                                 column_mapping=column_mapping,
                                                 model_path=fb_prophet_without_exog_path,
                                                 model_name="fb_prophet_without_exog",
-                                                is_log_transformed=SessionManager.get_state("is_log_transformed"),
+                                                is_log_transformed=is_log_transformed,
                                                 train=train.to_dict(orient='records'),
                                                 test=test.to_dict(orient='records'))
         if json_response.status_code == 200:
@@ -255,7 +260,7 @@ async def handle_fb_prophet_with_and_without_exog_training_and_predictions(train
                                                 column_mapping=column_mapping,
                                                 model_path=fb_prophet_with_exog_path,
                                                 model_name="fb_prophet_with_exog",
-                                                is_log_transformed=SessionManager.get_state("is_log_transformed"),
+                                                is_log_transformed=is_log_transformed,
                                                 train=train_with_exog.to_dict(orient='records'),
                                                 test=test_with_exog.to_dict(orient='records'))
         if json_response.status_code == 200:
