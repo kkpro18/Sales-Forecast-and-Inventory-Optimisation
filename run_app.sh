@@ -2,7 +2,7 @@
 
 
 AUTHOR="Kirisan Thiruchelvam" 
-VERSION="1.1"
+VERSION="1"
 PROJECT_DIR="/Users/kirisanthiruchelvam/PycharmProjects/Sales-Forecast-and-Inventory-Optimisation"
 VENV_DIR="$PROJECT_DIR/.venv"
 
