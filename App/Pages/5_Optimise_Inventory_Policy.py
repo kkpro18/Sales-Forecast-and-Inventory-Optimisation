@@ -28,6 +28,6 @@ elif seasonable:
         newsvendor_optimal_order_quantity = optimise_inventory_policy_controller.handle_newsvendor_calculation(**newsvendor_input)
         st.write("The Optimal Order Quantity for this Product is: ", newsvendor_optimal_order_quantity)
 
-st.page_link("pages/5_Optimise_Inventory_Policy.py", label="👈 Next Stage: Calculate Optimal inventory policy",
-             icon="⚙️")
+st.page_link("pages/6_Inventory_Policy_Simulator.py", label="👈 Next Stage: Simulate inventory policy",
+             icon="🕹️")
 

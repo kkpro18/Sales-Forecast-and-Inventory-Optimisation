@@ -66,20 +66,6 @@
             </Attribute>
           </value>
         </entry>
-        <entry key="/App/data/kaggle.com_datasets_fahadrehman07_retail-transaction-dataset/Retail_Transaction_Dataset.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
-        <entry key="/App/data/kaggle.com_datasets_rajatsurana979_fast-food-sales-report/Balaji Fast Food Sales.csv">
-          <value>
-            <Attribute>
-              <option name="separator" value="," />
-            </Attribute>
-          </value>
-        </entry>
       </map>
     </option>
   </component>
