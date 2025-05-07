@@ -2,7 +2,8 @@
 
 ## How to Run Application
 
-- **Installing Requirements**: 
+- **Installing Requirements**:
+- Conda Environment Python 3.10
   - If running on a Mac, run the `install packages` shell script.
   - On other systems, run `pip install -r requirements.txt` in the terminal.
 
